@@ -73,10 +73,20 @@ def deduct_attempt(amount=1):
             df.to_csv(DB_CODES, index=False)
             st.session_state.credit = df.at[idx, 'remaining']
             return True
-    else:
+   else:
         df = pd.read_csv(DB_SECURITY)
         dev_id = get_device_id()
-        idx = df.index[df['device_id'] == dev_id].tolist()[0]
+        
+        # التحقق مما إذا كان الجهاز مسجلاً مسبقاً
+        mask = df['device_id'] == dev_id
+        if not mask.any():
+            # إذا كان جهازاً جديداً، نقوم بتسجيله الآن برصيد مستخدم = 0
+            new_row = pd.DataFrame([{'device_id': dev_id, 'free_used': 0}])
+            df = pd.concat([df, new_row], ignore_index=True)
+            mask = df['device_id'] == dev_id # تحديث القناع ليشمل الصف الجديد
+
+        idx = df.index[mask].tolist()[0]
+        
         if df.at[idx, 'free_used'] + amount <= 2:
             df.at[idx, 'free_used'] += amount
             df.to_csv(DB_SECURITY, index=False)
