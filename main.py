@@ -12,7 +12,7 @@ from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt
 
-# --- إعدادات النظام والمفاتيح [cite: 319-322] ---
+# --- إعدادات النظام والمفاتيح ---
 API_KEY = st.secrets["OPENAI_API_KEY"]
 from openai import OpenAI
 client = OpenAI(api_key=API_KEY)
@@ -20,7 +20,7 @@ client = OpenAI(api_key=API_KEY)
 DB_CODES = "scholar_main_db.csv"
 DB_SECURITY = "device_tracking.csv"
 
-# --- تهيئة قواعد البيانات [cite: 325-331] ---
+# --- تهيئة قواعد البيانات ---
 def init_db():
     if not os.path.exists(DB_CODES):
         pd.DataFrame(columns=["code", "credit", "remaining", "status", "activation_date", "expiry_date"]).to_csv(DB_CODES, index=False)
@@ -29,7 +29,7 @@ def init_db():
 
 init_db()
 
-# --- وظيفة إنشاء ملف Word بتنسيق عربي [cite: 332-342] ---
+# --- وظيفة إنشاء ملف Word بتنسيق عربي ---
 def create_word_file(text):
     doc = Document()
     p = doc.add_paragraph(text)
@@ -39,7 +39,7 @@ def create_word_file(text):
     bio.seek(0)
     return bio
 
-# --- وظائف الحماية والخصم (الإصلاح الجذري للقفل) [cite: 343-381] ---
+# --- وظائف الحماية والخصم ---
 def get_device_id():
     return str(uuid.getnode())
 
@@ -63,15 +63,9 @@ def deduct_attempt(amount=1):
             return True
         return False
     else:
-        # نظام القفل الصارم للمجاني 
+        # القفل الصارم للمستخدم المجاني
         df = pd.read_csv(DB_SECURITY)
         dev_id = get_device_id()
-        # التأكد من وجود الجهاز في القاعدة
-        if dev_id not in df['device_id'].values:
-            new_dev = pd.DataFrame([{"device_id": dev_id, "free_used": 0, "is_blocked": False}])
-            df = pd.concat([df, new_dev], ignore_index=True)
-            df.to_csv(DB_SECURITY, index=False)
-        
         idx = df.index[df['device_id'] == dev_id].tolist()[0]
         if df.at[idx, 'free_used'] + amount <= 2:
             df.at[idx, 'free_used'] += amount
@@ -85,7 +79,7 @@ def deduct_attempt(amount=1):
             df.to_csv(DB_SECURITY, index=False)
             return False
 
-# --- التنسيق البصري CSS [cite: 385-451] ---
+# --- التنسيق البصري CSS ---
 st.set_page_config(page_title="ScholarNode Academy", layout="wide")
 st.markdown("""
     <style>
@@ -100,7 +94,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- القائمة الجانبية وحقل الإدارة [cite: 453-507] ---
+# --- القائمة الجانبية (استعادة الكروت المفقودة وحقل الإدارة) ---
 with st.sidebar:
     if "auth" in st.session_state:
         if st.button(" 🔴 تسجيل الخروج"):
@@ -110,37 +104,52 @@ with st.sidebar:
     st.markdown('<h2 style="color:#1e3a8a; text-align:center;"> 💳 معلومات الدفع</h2>', unsafe_allow_html=True)
     st.markdown(f'<div class="payment-box"><b> 🏦 ماستر كارد الرافدين:</b><br>8369719342<br><br><b> 👤 الاسم:</b><br>HAYDER Z. JASIM<br><br><b> 📞 الهاتف:</b><br>07879974395</div>', unsafe_allow_html=True)
     
+    # استعادة الكروت 20 و 30 و 40
     st.markdown("### 🏷️ جدول الكروت")
-    st.markdown('<table class="price-table"><tr><th>الفئة</th><th>المحاولات</th></tr><tr><td>10,000</td><td>66</td></tr><tr><td>50,000</td><td>333</td></tr><tr><td>100,000</td><td>666</td></tr></table>', unsafe_allow_html=True)
+    st.markdown('''
+        <table class="price-table">
+            <tr><th>الفئة (دينار)</th><th>المحاولات</th></tr>
+            <tr><td>10,000</td><td>66</td></tr>
+            <tr style="background:#facc15;"><td>20,000</td><td>133</td></tr>
+            <tr><td>30,000</td><td>200</td></tr>
+            <tr style="background:#facc15;"><td>40,000</td><td>266</td></tr>
+            <tr><td>50,000</td><td>333</td></tr>
+            <tr style="background:#ef4444; color:white;"><td>100,000</td><td>666</td></tr>
+        </table>
+    ''', unsafe_allow_html=True)
 
-    # استعادة حقل الإدارة (Admin) 
+    # استعادة حقل الإدارة (Admin) المفقود
     st.write("---")
-    adm = st.text_input("لوحة التحكم (Admin):", type="password", key="admin_key")
+    adm = st.text_input("لوحة التحكم (Admin):", type="password", key="admin_panel")
     if adm == "HAYDER_2026":
-        cat = st.selectbox("توليد فئة:", [10, 20, 30, 40, 50, 100])
-        if st.button("توليد كود الاشتراك"):
+        cat = st.selectbox("اختر فئة الكارت لتوليده:", [10, 20, 30, 40, 50, 100])
+        if st.button("توليد كود جديد"):
             new_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
             attempts = {10: 66, 20: 133, 30: 200, 40: 266, 50: 333, 100: 666}[cat]
             df = pd.read_csv(DB_CODES)
             new_entry = pd.DataFrame([{"code": new_code, "credit": attempts, "remaining": attempts, "status": "Active", "activation_date": "None", "expiry_date": "None"}])
             pd.concat([df, new_entry]).to_csv(DB_CODES, index=False)
-            st.success(f"الكود: {new_code}")
+            st.success(f"الكود المولد: {new_code}")
 
-# --- بوابة الدخول [cite: 509-541] ---
+# --- بوابة الدخول ---
 if "auth" not in st.session_state:
     st.markdown('<div class="main-header"><h1>المنصة الأكاديمية (ScholarNode)</h1></div>', unsafe_allow_html=True)
     status, used = check_security()
-    c1, c2 = st.columns(2)
-    with c1:
+    col1, col2 = st.columns(2)
+    with col1:
         st.subheader(" 🎁 الدخول المجاني")
         if status == "blocked" or used >= 2:
-            st.error("❌ تم استهلاك المحاولات المجانية لهذا الجهاز.")
+            st.error("❌ تم استنفاد المحاولات المجانية لهذا الجهاز.")
         else:
             u_name = st.text_input("الاسم الثلاثي:", key="free_name")
             if st.button("بدء التجربة") and len(u_name.split()) >= 3:
+                if status == "new":
+                    df = pd.read_csv(DB_SECURITY)
+                    new_dev = pd.DataFrame([{"device_id": get_device_id(), "free_used": 0, "is_blocked": False}])
+                    pd.concat([df, new_dev]).to_csv(DB_SECURITY, index=False)
                 st.session_state.update({"auth": True, "mode": "free", "user": u_name, "credit": 2 - used})
                 st.rerun()
-    with c2:
+    with col2:
         st.subheader(" 🔑 تفعيل الاشتراك")
         in_code = st.text_input("كود الكارت:", type="password", key="sub_code")
         if st.button("تفعيل الحساب"):
@@ -151,33 +160,30 @@ if "auth" not in st.session_state:
                 st.rerun()
     st.stop()
 
-# --- الواجهة الرئيسية [cite: 543-610] ---
+# --- الواجهة الرئيسية (الشريط الأزرق) ---
 st.markdown(f'<div class="main-header"><h1>مرحباً {st.session_state.user}</h1><h2 style="color:#facc15 !important;">الرصيد: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
 uploaded_file = st.file_uploader(" 📂 ارفع ملف PDF", type=["pdf"])
 
 if uploaded_file:
-    doc_data = uploaded_file.read()
-    doc_temp = fitz.open(stream=doc_data, filetype="pdf")
-    st.session_state.total_pages = len(doc_temp)
-    
+    doc_content = uploaded_file.read()
     tabs = st.tabs([" 💬 الشات الأكاديمي", " 🌍 الترجمة", " 🎓 المراجعة", " 📄 المعاينة"])
 
-    with tabs[0]: # الشات [cite: 588-593]
-        prompt = st.chat_input("اسأل أي شيء...")
+    with tabs[0]:
+        prompt = st.chat_input("اسأل أي شيء عن محتوى الملف...")
         if prompt:
             if deduct_attempt(1):
                 res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": prompt}])
                 st.markdown(f'<div class="rtl-content">{res.choices[0].message.content}</div>', unsafe_allow_html=True)
-            else: st.error("❌ رصيدك لا يسمح.")
+            else: st.error("❌ رصيدك غير كافٍ.")
 
-    with tabs[1]: # الترجمة [cite: 553-567]
-        if st.button("بدء الترجمة"):
-            if deduct_attempt(st.session_state.total_pages):
+    with tabs[1]:
+        if st.button("بدء الترجمة الاحترافية"):
+            if deduct_attempt(1):
                 st.success("تمت الترجمة.")
-                st.download_button("📥 تحميل Word", create_word_file("نص مترجم"), "trans.docx")
+                st.download_button("📥 تحميل Word (مترجم)", create_word_file("نص مترجم بتنسيق عربي"), "translated.docx")
 
-    with tabs[3]: # المعاينة [cite: 594-609]
-        doc = fitz.open(stream=doc_data, filetype="pdf")
+    with tabs[3]:
+        doc = fitz.open(stream=doc_content, filetype="pdf")
         cl, cr = st.columns([1, 2])
         with cl:
             p = st.number_input("رقم الصفحة:", 1, len(doc), 1)
