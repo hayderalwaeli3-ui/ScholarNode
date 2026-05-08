@@ -29,7 +29,7 @@ def init_db():
 
 init_db()
 
-# --- وظائف مساعدة ---
+# --- وظائف الحماية والتحقق ---
 def get_device_id():
     return str(uuid.getnode())
 
@@ -38,7 +38,6 @@ def check_security():
     df = pd.read_csv(DB_SECURITY)
     user_row = df[df['device_id'] == dev_id]
     if not user_row.empty:
-        # إذا استهلك محاولتين أو تم حظره، لا يمكنه الدخول مجدداً
         if user_row.iloc[0]['is_blocked'] or user_row.iloc[0]['free_used'] >= 2: 
             return "blocked", user_row.iloc[0]['free_used']
         return "exists", user_row.iloc[0]['free_used']
@@ -65,7 +64,7 @@ def deduct_attempt(amount=1):
             st.session_state.credit -= amount
             return True
         else:
-            st.error("❌ انتهت المحاولة المجانية ولا يمكن تسجيل الدخول مرة أخرى. يرجى تفعيل حساب مدفوع.")
+            st.error("❌ انتهت المحاولات المجانية.")
             st.stop()
             return False
 
@@ -84,7 +83,6 @@ st.markdown("""
     <style>
     .stApp { background-color: #ffffff !important; }
     .main-header { background: #1e3a8a; color: #ffffff !important; padding: 30px; text-align: center; border-radius: 15px; border: 5px solid #facc15; margin-bottom: 25px; }
-    input[type="text"], input[type="password"], textarea { color: #000000 !important; font-weight: bold !important; border: 2px solid #1e3a8a !important; }
     h1, h2, h3, p, span, label { color: #000000 !important; font-weight: bold !important; }
     .price-table { width: 100%; border-collapse: collapse; border: 2px solid #ef4444; }
     .price-table th { background: #ef4444; color: white !important; padding: 10px; }
@@ -107,7 +105,6 @@ with st.sidebar:
         st.markdown(f'<div class="finance-info">📊 تفاصيل الكلفة:<br>📄 صفحات: {st.session_state.total_pages}<br>💰 المبلغ الكلي: {total_iqd} دينار</div>', unsafe_allow_html=True)
     
     st.markdown('<h2 style="color:#1e3a8a; text-align:center;"> 💳 معلومات الدفع</h2>', unsafe_allow_html=True)
-    # استعادة معلوماتك الشخصية بدقة من ملف الوورد
     st.markdown(f"""
     <div class="payment-box">
     <b> 🏦 ماستر كارد الرافدين:</b><br>8369719342<br><br>
@@ -139,7 +136,7 @@ if "auth" not in st.session_state:
     with col1:
         st.subheader(" 🎁 الدخول المجاني")
         if status == "blocked" or used >= 2: 
-            st.error("❌ انتهت المحاولة المجانية لهذا الجهاز. يرجى تفعيل اشتراك مدفوع.")
+            st.error("❌ انتهت المحاولة المجانية. يرجى تفعيل اشتراك مدفوع.")
         else:
             u_name = st.text_input("الاسم الثلاثي:", key="free_name")
             if st.button("بدء التجربة") and len(u_name.split()) >= 3:
@@ -171,15 +168,34 @@ if uploaded_file:
     
     tabs = st.tabs([" 💬 الشات الأكاديمي", " 🌍 الترجمة", " 🎓 المراجعة", " 📄 المعاينة والتحليل"])
 
+    with tabs[0]: # الشات الأكاديمي
+        st.subheader(" 💬 اسأل الذكاء الصناعي عن ملفك")
+        prompt = st.chat_input("اكتب سؤالك هنا...")
+        if prompt:
+            if deduct_attempt(1):
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": prompt}])
+                st.markdown(f'<div style="color:black; background:#f0f2f6; padding:15px; border-radius:10px; border-right:5px solid #1e3a8a;">{res.choices[0].message.content}</div>', unsafe_allow_html=True)
+
     with tabs[1]: # الترجمة
         target_lang = st.selectbox("إلى:", ["العربية", "English"])
-        if st.button(f"بدء الترجمة ({st.session_state.total_pages} صفحة)"):
+        if st.button(f"بدء الترجمة ({st.session_state.total_pages} محاولة)"):
             if deduct_attempt(st.session_state.total_pages):
                 doc = fitz.open(stream=doc_bytes, filetype="pdf")
                 all_text = "\n".join([p.get_text() for p in doc])
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate to {target_lang}:\n{all_text[:10000]}"}])
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate to {target_lang}:\n{all_text[:12000]}"}])
                 st.write(res.choices[0].message.content)
-                st.download_button("📥 تحميل Word", create_word_file(res.choices[0].message.content), "translated.docx")
+                st.download_button("📥 تحميل الترجمة (Word)", create_word_file(res.choices[0].message.content), "translated.docx")
+
+    with tabs[2]: # المراجعة الأكاديمية (تمت إضافتها الآن)
+        st.subheader(" 🎓 خدمة المراجعة الأكاديمية")
+        if st.button(f"بدء المراجعة ({st.session_state.total_pages} محاولة)"):
+            if deduct_attempt(st.session_state.total_pages):
+                doc = fitz.open(stream=doc_bytes, filetype="pdf")
+                all_text = "\n".join([p.get_text() for p in doc])
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Review this academic text:\n{all_text[:12000]}"}])
+                st.success("تمت المراجعة:")
+                st.write(res.choices[0].message.content)
+                st.download_button("📥 تحميل المراجعة (Word)", create_word_file(res.choices[0].message.content), "reviewed.docx")
 
     with tabs[3]: # المعاينة
         doc = fitz.open(stream=doc_bytes, filetype="pdf")
@@ -187,7 +203,7 @@ if uploaded_file:
         with col_l:
             p_num = st.number_input("الصفحة:", 1, len(doc), 1)
             task = st.text_area("المهمة:")
-            if st.button("معالجة"):
+            if st.button("معالجة الصفحة"):
                 if deduct_attempt(1):
                     res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"نص: {doc[p_num-1].get_text()}\nمهمة: {task}"}])
                     st.success(res.choices[0].message.content)
