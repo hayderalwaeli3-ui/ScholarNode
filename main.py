@@ -29,17 +29,7 @@ def init_db():
 
 init_db()
 
-# --- وظيفة إنشاء ملف Word بتنسيق عربي ---
-def create_word_file(text):
-    doc = Document()
-    p = doc.add_paragraph(text)
-    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    bio = io.BytesIO()
-    doc.save(bio)
-    bio.seek(0)
-    return bio
-
-# --- وظائف الحماية والخصم ---
+# --- وظائف مساعدة ---
 def get_device_id():
     return str(uuid.getnode())
 
@@ -48,7 +38,9 @@ def check_security():
     df = pd.read_csv(DB_SECURITY)
     user_row = df[df['device_id'] == dev_id]
     if not user_row.empty:
-        if user_row.iloc[0]['is_blocked']: return "blocked", 0
+        # إذا استهلك محاولتين أو تم حظره، لا يمكنه الدخول مجدداً
+        if user_row.iloc[0]['is_blocked'] or user_row.iloc[0]['free_used'] >= 2: 
+            return "blocked", user_row.iloc[0]['free_used']
         return "exists", user_row.iloc[0]['free_used']
     return "new", 0
 
@@ -65,33 +57,39 @@ def deduct_attempt(amount=1):
     else:
         df = pd.read_csv(DB_SECURITY)
         dev_id = get_device_id()
-        # إصلاح الخلل: التأكد من وجود الجهاز في الملف قبل الخصم
-        if dev_id not in df['device_id'].values:
-            new_dev = pd.DataFrame([{"device_id": dev_id, "free_used": 0, "is_blocked": False}])
-            df = pd.concat([df, new_dev], ignore_index=True)
-        
         idx = df.index[df['device_id'] == dev_id].tolist()[0]
         if df.at[idx, 'free_used'] + amount <= 2:
             df.at[idx, 'free_used'] += amount
+            if df.at[idx, 'free_used'] >= 2: df.at[idx, 'is_blocked'] = True
             df.to_csv(DB_SECURITY, index=False)
             st.session_state.credit -= amount
             return True
         else:
-            st.error("❌ نفد الرصيد المجاني.")
+            st.error("❌ انتهت المحاولة المجانية ولا يمكن تسجيل الدخول مرة أخرى. يرجى تفعيل حساب مدفوع.")
             st.stop()
             return False
 
-# --- التنسيق البصري (CSS المسترجع كاملاً) ---
+def create_word_file(text):
+    doc = Document()
+    p = doc.add_paragraph(text)
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    bio = io.BytesIO()
+    doc.save(bio)
+    bio.seek(0)
+    return bio
+
+# --- التنسيق البصري (CSS) المسترجع بالكامل ---
 st.set_page_config(page_title="ScholarNode Academy", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #ffffff !important; }
     .main-header { background: #1e3a8a; color: #ffffff !important; padding: 30px; text-align: center; border-radius: 15px; border: 5px solid #facc15; margin-bottom: 25px; }
+    input[type="text"], input[type="password"], textarea { color: #000000 !important; font-weight: bold !important; border: 2px solid #1e3a8a !important; }
     h1, h2, h3, p, span, label { color: #000000 !important; font-weight: bold !important; }
     .price-table { width: 100%; border-collapse: collapse; border: 2px solid #ef4444; }
     .price-table th { background: #ef4444; color: white !important; padding: 10px; }
     .price-table td { border: 1px solid #ef4444; padding: 8px; text-align: center; color: #000000 !important; }
-    .payment-box { background: #1e3a8a; color: white !important; padding: 15px; border-radius: 10px; border: 3px solid #facc15; }
+    .payment-box { background: #1e3a8a; color: white !important; padding: 15px; border-radius: 10px; border: 3px solid #facc15; margin-bottom: 20px; }
     .finance-info { background: #fffbe6; color: #856404; padding: 15px; border-radius: 8px; border-right: 5px solid #facc15; margin-bottom: 20px; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
@@ -104,27 +102,23 @@ with st.sidebar:
             st.rerun()
     st.write("---")
     if "total_pages" in st.session_state:
-        # استرجاع الحسبة الأصلية (300 دينار + 8%)
         base_cost = st.session_state.total_pages * 300
         total_iqd = int(base_cost + (base_cost * 0.08))
-        st.markdown(f'<div class="finance-info">📊 تفاصيل الكلفة:<br>📄 صفحات: {st.session_state.total_pages}<br>💰 المبلغ: {total_iqd} دينار</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="finance-info">📊 تفاصيل الكلفة:<br>📄 صفحات: {st.session_state.total_pages}<br>💰 المبلغ الكلي: {total_iqd} دينار</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="payment-box"><b>🏦 الرافدين:</b><br>8369719342<br><br><b>👤 حيدر جاسم</b><br>07879974395</div>', unsafe_allow_html=True)
-    
-    # استرجاع جدول الكروت الكامل
-    st.markdown("### 🏷️ جدول الكروت")
-    st.markdown("""
-        <table class="price-table">
-        <tr><th>الفئة (دينار)</th><th>المحاولات</th></tr>
-        <tr><td>10,000</td><td>66</td></tr>
-        <tr><td>20,000</td><td>133</td></tr>
-        <tr><td>30,000</td><td>200</td></tr>
-        <tr><td>40,000</td><td>266</td></tr>
-        <tr><td>50,000</td><td>333</td></tr>
-        <tr><td>100,000</td><td>666</td></tr>
-        </table>
+    st.markdown('<h2 style="color:#1e3a8a; text-align:center;"> 💳 معلومات الدفع</h2>', unsafe_allow_html=True)
+    # استعادة معلوماتك الشخصية بدقة من ملف الوورد
+    st.markdown(f"""
+    <div class="payment-box">
+    <b> 🏦 ماستر كارد الرافدين:</b><br>8369719342<br><br>
+    <b> 👤 الاسم:</b><br>HAYDER Z. JASIM<br><br>
+    <b> 📞 الهاتف:</b><br><span style="font-size:18px;">07879974395</span>
+    </div>
     """, unsafe_allow_html=True)
     
+    st.markdown("### 🏷️ جدول الكروت")
+    st.markdown('<table class="price-table"><tr><th>الفئة (دينار)</th><th>المحاولات</th></tr><tr><td>10,000</td><td>66</td></tr><tr><td>20,000</td><td>133</td></tr><tr><td>30,000</td><td>200</td></tr><tr><td>40,000</td><td>266</td></tr><tr><td>50,000</td><td>333</td></tr><tr><td>100,000</td><td>666</td></tr></table>', unsafe_allow_html=True)
+
     st.write("---")
     adm = st.text_input("لوحة التحكم (Admin):", type="password")
     if adm == "HAYDER_2026":
@@ -144,7 +138,8 @@ if "auth" not in st.session_state:
     col1, col2 = st.columns(2)
     with col1:
         st.subheader(" 🎁 الدخول المجاني")
-        if used >= 2: st.error("المحاولات المجانية نفدت.")
+        if status == "blocked" or used >= 2: 
+            st.error("❌ انتهت المحاولة المجانية لهذا الجهاز. يرجى تفعيل اشتراك مدفوع.")
         else:
             u_name = st.text_input("الاسم الثلاثي:", key="free_name")
             if st.button("بدء التجربة") and len(u_name.split()) >= 3:
@@ -167,28 +162,26 @@ if "auth" not in st.session_state:
 
 # --- الواجهة الرئيسية ---
 st.markdown(f'<div class="main-header"><h1>مرحباً {st.session_state.user}</h1><h2 style="color:#facc15 !important;">الرصيد: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
-uploaded_file = st.file_uploader("📂 ارفع ملف PDF", type=["pdf"])
+uploaded_file = st.file_uploader(" 📂 ارفع ملف PDF", type=["pdf"])
 
 if uploaded_file:
     doc_bytes = uploaded_file.read()
     doc_temp = fitz.open(stream=doc_bytes, filetype="pdf")
     st.session_state.total_pages = len(doc_temp)
     
-    tabs = st.tabs(["💬 الشات الأكاديمي", "🌍 الترجمة", "🎓 المراجعة", "📄 المعاينة والتحليل"])
+    tabs = st.tabs([" 💬 الشات الأكاديمي", " 🌍 الترجمة", " 🎓 المراجعة", " 📄 المعاينة والتحليل"])
 
-    with tabs[1]: # الترجمة الأكاديمية
-        st.subheader("🌍 خدمة الترجمة")
+    with tabs[1]: # الترجمة
         target_lang = st.selectbox("إلى:", ["العربية", "English"])
-        if st.button(f"بدء ترجمة ({st.session_state.total_pages} صفحة)"):
+        if st.button(f"بدء الترجمة ({st.session_state.total_pages} صفحة)"):
             if deduct_attempt(st.session_state.total_pages):
                 doc = fitz.open(stream=doc_bytes, filetype="pdf")
                 all_text = "\n".join([p.get_text() for p in doc])
                 res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate to {target_lang}:\n{all_text[:10000]}"}])
                 st.write(res.choices[0].message.content)
-                word_io = create_word_file(res.choices[0].message.content)
-                st.download_button("📥 تحميل Word", word_io, "translated.docx")
+                st.download_button("📥 تحميل Word", create_word_file(res.choices[0].message.content), "translated.docx")
 
-    with tabs[3]: # المعاينة والتحليل
+    with tabs[3]: # المعاينة
         doc = fitz.open(stream=doc_bytes, filetype="pdf")
         col_l, col_r = st.columns([1, 2])
         with col_l:
