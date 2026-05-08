@@ -56,44 +56,27 @@ def check_security():
     return "new", 0
 
 def deduct_attempt(amount=1):
-    if st.session_state.mode == "pro":
-        df = pd.read_csv(DB_CODES)
-        idx = df.index[df['code'] == st.session_state.code].tolist()[0]
-        expiry_val = df.at[idx, 'expiry_date']
-        if not pd.isna(expiry_val) and str(expiry_val) != "None":
-            try:
-                expiry = datetime.strptime(str(expiry_val), "%Y-%m-%d")
-                if datetime.now() > expiry:
-                    df.at[idx, 'status'] = "Expired"
-                    df.to_csv(DB_CODES, index=False)
-                    return False
-            except: pass
-        if df.at[idx, 'remaining'] >= amount:
-            df.at[idx, 'remaining'] -= amount
-            df.to_csv(DB_CODES, index=False)
-            st.session_state.credit = df.at[idx, 'remaining']
-            return True
-   else:
-        df = pd.read_csv(DB_SECURITY)
-        dev_id = get_device_id()
-        
-        # التحقق مما إذا كان الجهاز مسجلاً مسبقاً
+    if st.session_state.get('access_granted', False):
+        return True
+    
+    df = pd.read_csv(DB_SECURITY)
+    dev_id = get_device_id()
+    
+    # التحقق من وجود الجهاز
+    mask = df['device_id'] == dev_id
+    if not mask.any():
+        new_row = pd.DataFrame([{'device_id': dev_id, 'free_used': 0}])
+        df = pd.concat([df, new_row], ignore_index=True)
         mask = df['device_id'] == dev_id
-        if not mask.any():
-            # إذا كان جهازاً جديداً، نقوم بتسجيله الآن برصيد مستخدم = 0
-            new_row = pd.DataFrame([{'device_id': dev_id, 'free_used': 0}])
-            df = pd.concat([df, new_row], ignore_index=True)
-            mask = df['device_id'] == dev_id # تحديث القناع ليشمل الصف الجديد
-
-        idx = df.index[mask].tolist()[0]
-        
-        if df.at[idx, 'free_used'] + amount <= 2:
-            df.at[idx, 'free_used'] += amount
-            df.to_csv(DB_SECURITY, index=False)
-            st.session_state.credit -= amount
-            return True
+    
+    idx = df.index[mask].tolist()[0]
+    
+    if df.at[idx, 'free_used'] + amount <= 2:
+        df.at[idx, 'free_used'] += amount
+        df.to_csv(DB_SECURITY, index=False)
+        st.session_state.credit = 2 - df.at[idx, 'free_used']
+        return True
     return False
-
 # ==========================================
 # التنسيق البصري (CSS)
 # ==========================================
