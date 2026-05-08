@@ -56,13 +56,13 @@ def check_security():
     return "new", 0
 
 def deduct_attempt(amount=1):
+    # إذا كان المستخدم مديراً أو لديه كود وصول، لا نخصم من المحاولات المجانية
     if st.session_state.get('access_granted', False):
         return True
     
     df = pd.read_csv(DB_SECURITY)
     dev_id = get_device_id()
     
-    # التحقق من وجود الجهاز
     mask = df['device_id'] == dev_id
     if not mask.any():
         new_row = pd.DataFrame([{'device_id': dev_id, 'free_used': 0}])
@@ -70,13 +70,19 @@ def deduct_attempt(amount=1):
         mask = df['device_id'] == dev_id
     
     idx = df.index[mask].tolist()[0]
+    current_used = df.at[idx, 'free_used']
     
-    if df.at[idx, 'free_used'] + amount <= 2:
-        df.at[idx, 'free_used'] += amount
-        df.to_csv(DB_SECURITY, index=False)
-        st.session_state.credit = 2 - df.at[idx, 'free_used']
-        return True
-    return False
+    # قفل الأمان الصارم (يمنع العمل بمجرد انتهاء المحاولتين)
+    if current_used >= 2:
+        st.error("❌ نفد رصيدك المجاني (محاولتان فقط). يرجى الحصول على كود وصول للمتابعة.")
+        st.stop() # هذا السطر يوقف عمل البرنامج فوراً ويمنع استهلاك API
+        return False
+    
+    # خصم المحاولة وحفظ التحديث
+    df.at[idx, 'free_used'] += amount
+    df.to_csv(DB_SECURITY, index=False)
+    st.session_state.credit = 2 - df.at[idx, 'free_used']
+    return True
 # ==========================================
 # التنسيق البصري (CSS)
 # ==========================================
