@@ -29,7 +29,7 @@ def init_db():
 
 init_db()
 
-# --- وظائف الحماية والتحقق ---
+# --- وظائف الحماية والتحكم ---
 def get_device_id():
     return str(uuid.getnode())
 
@@ -38,7 +38,7 @@ def check_security():
     df = pd.read_csv(DB_SECURITY)
     user_row = df[df['device_id'] == dev_id]
     if not user_row.empty:
-        if user_row.iloc[0]['is_blocked'] or user_row.iloc[0]['free_used'] >= 2: 
+        if user_row.iloc[0]['is_blocked'] or user_row.iloc[0]['free_used'] >= 2:
             return "blocked", user_row.iloc[0]['free_used']
         return "exists", user_row.iloc[0]['free_used']
     return "new", 0
@@ -59,12 +59,13 @@ def deduct_attempt(amount=1):
         idx = df.index[df['device_id'] == dev_id].tolist()[0]
         if df.at[idx, 'free_used'] + amount <= 2:
             df.at[idx, 'free_used'] += amount
-            if df.at[idx, 'free_used'] >= 2: df.at[idx, 'is_blocked'] = True
+            if df.at[idx, 'free_used'] >= 2:
+                df.at[idx, 'is_blocked'] = True
             df.to_csv(DB_SECURITY, index=False)
             st.session_state.credit -= amount
             return True
         else:
-            st.error("❌ انتهت المحاولات المجانية.")
+            st.error("❌ انتهت المحاولات المجانية نهائياً لهذا الجهاز.")
             st.stop()
             return False
 
@@ -77,7 +78,7 @@ def create_word_file(text):
     bio.seek(0)
     return bio
 
-# --- التنسيق البصري (CSS) المسترجع بالكامل ---
+# --- التنسيق البصري (CSS المسترجع بالكامل) ---
 st.set_page_config(page_title="ScholarNode Academy", layout="wide")
 st.markdown("""
     <style>
@@ -168,9 +169,8 @@ if uploaded_file:
     
     tabs = st.tabs([" 💬 الشات الأكاديمي", " 🌍 الترجمة", " 🎓 المراجعة", " 📄 المعاينة والتحليل"])
 
-    with tabs[0]: # الشات الأكاديمي
-        st.subheader(" 💬 اسأل الذكاء الصناعي عن ملفك")
-        prompt = st.chat_input("اكتب سؤالك هنا...")
+    with tabs[0]: # الشات
+        prompt = st.chat_input("اسأل أي شيء عن الملف...")
         if prompt:
             if deduct_attempt(1):
                 res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": prompt}])
@@ -186,14 +186,13 @@ if uploaded_file:
                 st.write(res.choices[0].message.content)
                 st.download_button("📥 تحميل الترجمة (Word)", create_word_file(res.choices[0].message.content), "translated.docx")
 
-    with tabs[2]: # المراجعة الأكاديمية (تمت إضافتها الآن)
-        st.subheader(" 🎓 خدمة المراجعة الأكاديمية")
-        if st.button(f"بدء المراجعة ({st.session_state.total_pages} محاولة)"):
+    with tabs[2]: # المراجعة
+        if st.button(f"بدء المراجعة الأكاديمية ({st.session_state.total_pages} محاولة)"):
             if deduct_attempt(st.session_state.total_pages):
                 doc = fitz.open(stream=doc_bytes, filetype="pdf")
                 all_text = "\n".join([p.get_text() for p in doc])
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Review this academic text:\n{all_text[:12000]}"}])
-                st.success("تمت المراجعة:")
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Review this text:\n{all_text[:12000]}"}])
+                st.success("تمت المراجعة بنجاح.")
                 st.write(res.choices[0].message.content)
                 st.download_button("📥 تحميل المراجعة (Word)", create_word_file(res.choices[0].message.content), "reviewed.docx")
 
@@ -202,8 +201,8 @@ if uploaded_file:
         col_l, col_r = st.columns([1, 2])
         with col_l:
             p_num = st.number_input("الصفحة:", 1, len(doc), 1)
-            task = st.text_area("المهمة:")
-            if st.button("معالجة الصفحة"):
+            task = st.text_area("المهمة المطلوبة:")
+            if st.button("معالجة"):
                 if deduct_attempt(1):
                     res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"نص: {doc[p_num-1].get_text()}\nمهمة: {task}"}])
                     st.success(res.choices[0].message.content)
