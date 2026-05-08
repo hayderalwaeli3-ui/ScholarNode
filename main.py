@@ -29,7 +29,17 @@ def init_db():
 
 init_db()
 
-# --- وظائف الحماية والتحكم ---
+# --- وظيفة إنشاء ملف Word بتنسيق عربي ---
+def create_word_file(text):
+    doc = Document()
+    p = doc.add_paragraph(text)
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    bio = io.BytesIO()
+    doc.save(bio)
+    bio.seek(0)
+    return bio
+
+# --- وظائف الحماية والخصم ---
 def get_device_id():
     return str(uuid.getnode())
 
@@ -38,8 +48,7 @@ def check_security():
     df = pd.read_csv(DB_SECURITY)
     user_row = df[df['device_id'] == dev_id]
     if not user_row.empty:
-        if user_row.iloc[0]['is_blocked'] or user_row.iloc[0]['free_used'] >= 2:
-            return "blocked", user_row.iloc[0]['free_used']
+        if user_row.iloc[0]['is_blocked']: return "blocked", 2
         return "exists", user_row.iloc[0]['free_used']
     return "new", 0
 
@@ -56,7 +65,7 @@ def deduct_attempt(amount=1):
                 return True
         return False
     else:
-        # إصلاح الـ IndexError هنا
+        # نظام الحماية الصارم للمجاني مع منع IndexError
         df = pd.read_csv(DB_SECURITY)
         dev_id = get_device_id()
         if dev_id not in df['device_id'].values:
@@ -76,26 +85,20 @@ def deduct_attempt(amount=1):
             st.stop()
             return False
 
-def create_word_file(text):
-    doc = Document()
-    p = doc.add_paragraph(text)
-    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    bio = io.BytesIO()
-    doc.save(bio)
-    bio.seek(0)
-    return bio
-
-# --- التنسيق البصري (CSS المسترجع) ---
+# --- التنسيق البصري (CSS) ---
 st.set_page_config(page_title="ScholarNode Academy", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #ffffff !important; }
     .main-header { background: #1e3a8a; color: #ffffff !important; padding: 30px; text-align: center; border-radius: 15px; border: 5px solid #facc15; margin-bottom: 25px; }
     h1, h2, h3, p, span, label { color: #000000 !important; font-weight: bold !important; }
-    .price-table { width: 100%; border-collapse: collapse; border: 2px solid #ef4444; }
+    .price-table { width: 100%; border-collapse: collapse; background: #ffffff; border: 2px solid #ef4444; }
     .price-table th { background: #ef4444; color: white !important; padding: 10px; }
     .price-table td { border: 1px solid #ef4444; padding: 8px; text-align: center; color: #000000 !important; }
+    .price-table tr:nth-child(odd) td { background: #fff1f2; }
+    .price-table tr:nth-child(even) td { background: #facc15; }
     .payment-box { background: #1e3a8a; color: white !important; padding: 15px; border-radius: 10px; border: 3px solid #facc15; margin-bottom: 20px; }
+    .finance-info { background: #fffbe6; color: #856404; padding: 15px; border-radius: 8px; border-right: 5px solid #facc15; margin-bottom: 20px; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -106,18 +109,24 @@ with st.sidebar:
             st.session_state.clear()
             st.rerun()
     st.write("---")
+    if "total_pages" in st.session_state:
+        base_cost = st.session_state.total_pages * 300
+        total_iqd = int(base_cost + (base_cost * 0.08))
+        st.markdown(f'<div class="finance-info">📊 تفاصيل الكلفة:<br>📄 عدد الصفحات: {st.session_state.total_pages}<br>💰 المبلغ الكلي: {total_iqd} دينار</div>', unsafe_allow_html=True)
+    
     st.markdown('<h2 style="color:#1e3a8a; text-align:center;"> 💳 معلومات الدفع</h2>', unsafe_allow_html=True)
     st.markdown(f'<div class="payment-box"><b> 🏦 ماستر كارد الرافدين:</b><br>8369719342<br><br><b> 👤 الاسم:</b><br>HAYDER Z. JASIM<br><br><b> 📞 الهاتف:</b><br>07879974395</div>', unsafe_allow_html=True)
     
     st.markdown("### 🏷️ جدول الكروت")
-    st.markdown('<table class="price-table"><tr><th>الفئة (دينار)</th><th>المحاولات</th></tr><tr><td>10,000</td><td>66</td></tr><tr><td>50,000</td><td>333</td></tr><tr><td>100,000</td><td>666</td></tr></table>', unsafe_allow_html=True)
+    st.markdown('<table class="price-table"><tr><th>الفئة (دينار)</th><th>المحاولات</th></tr><tr><td>10,000</td><td>66</td></tr><tr><td>20,000</td><td>133</td></tr><tr><td>30,000</td><td>200</td></tr><tr><td>40,000</td><td>266</td></tr><tr><td>50,000</td><td>333</td></tr><tr><td>100,000</td><td>666</td></tr></table>', unsafe_allow_html=True)
 
+    st.write("---")
     adm = st.text_input("لوحة التحكم (Admin):", type="password")
     if adm == "HAYDER_2026":
-        cat = st.selectbox("توليد فئة:", [10, 50, 100])
+        cat = st.selectbox("توليد فئة:", [10, 20, 30, 40, 50, 100])
         if st.button("توليد كود الاشتراك"):
             new_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
-            attempts = {10: 66, 50: 333, 100: 666}[cat]
+            attempts = {10: 66, 20: 133, 30: 200, 40: 266, 50: 333, 100: 666}[cat]
             df = pd.read_csv(DB_CODES)
             new_entry = pd.DataFrame([{"code": new_code, "credit": attempts, "remaining": attempts, "status": "Active", "activation_date": "None", "expiry_date": "None"}])
             pd.concat([df, new_entry]).to_csv(DB_CODES, index=False)
@@ -130,16 +139,20 @@ if "auth" not in st.session_state:
     col1, col2 = st.columns(2)
     with col1:
         st.subheader(" 🎁 الدخول المجاني")
-        if status == "blocked" or used >= 2: 
-            st.error("❌ انتهت المحاولة المجانية.")
+        if used >= 2: 
+            st.error("❌ انتهت المحاولات المجانية.")
         else:
             u_name = st.text_input("الاسم الثلاثي:", key="free_name")
             if st.button("بدء التجربة") and len(u_name.split()) >= 3:
+                if status == "new":
+                    df = pd.read_csv(DB_SECURITY)
+                    new_dev = pd.DataFrame([{"device_id": get_device_id(), "free_used": 0, "is_blocked": False}])
+                    pd.concat([df, new_dev]).to_csv(DB_SECURITY, index=False)
                 st.session_state.update({"auth": True, "mode": "free", "user": u_name, "credit": 2 - used})
                 st.rerun()
     with col2:
         st.subheader(" 🔑 تفعيل الاشتراك")
-        in_code = st.text_input("كود الكارت:", type="password")
+        in_code = st.text_input("كود الكارت:", type="password", key="sub_code")
         if st.button("تفعيل الحساب"):
             df = pd.read_csv(DB_CODES)
             match = df[(df['code'] == in_code.strip()) & (df['status'] == 'Active')]
@@ -153,31 +166,52 @@ st.markdown(f'<div class="main-header"><h1>مرحباً {st.session_state.user}<
 uploaded_file = st.file_uploader(" 📂 ارفع ملف PDF", type=["pdf"])
 
 if uploaded_file:
-    doc_bytes = uploaded_file.read()
-    doc_temp = fitz.open(stream=doc_bytes, filetype="pdf")
+    file_bytes = uploaded_file.read()
+    doc_temp = fitz.open(stream=file_bytes, filetype="pdf")
     st.session_state.total_pages = len(doc_temp)
     
-    tabs = st.tabs([" 💬 الشات", " 🌍 الترجمة", " 🎓 المراجعة", " 📄 المعاينة"])
+    tabs = st.tabs([" 💬 الشات الأكاديمي", " 🌍 الترجمة", " 🎓 المراجعة", " 📄 المعاينة والتحليل"])
+
+    with tabs[0]: # الشات الأكاديمي
+        prompt = st.chat_input("اسأل أي شيء عن الملف...")
+        if prompt:
+            if deduct_attempt(1):
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": prompt}])
+                st.markdown(f'<div style="color:black; background:#f0f2f6; padding:15px; border-radius:10px; border-right:5px solid #1e3a8a;">{res.choices[0].message.content}</div>', unsafe_allow_html=True)
 
     with tabs[1]: # الترجمة
-        target_lang = st.selectbox("إلى:", ["العربية", "English"])
-        if st.button(f"بدء الترجمة"):
+        target_lang = st.selectbox("ترجمة إلى:", ["العربية", "English"])
+        if st.button(f"بدء الترجمة ({st.session_state.total_pages} محاولة)"):
             if deduct_attempt(st.session_state.total_pages):
-                st.success("تمت الترجمة.")
-                st.download_button("📥 تحميل Word", create_word_file("نص مترجم"), "trans.docx")
+                doc = fitz.open(stream=file_bytes, filetype="pdf")
+                all_text = "\n".join([page.get_text() for page in doc])
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate to {target_lang}:\n{all_text[:12000]}"}])
+                st.success("تمت الترجمة:")
+                st.write(res.choices[0].message.content)
+                st.download_button("📥 تحميل الترجمة (Word)", create_word_file(res.choices[0].message.content), "translated.docx")
 
     with tabs[2]: # المراجعة
-        if st.button(f"بدء المراجعة"):
+        if st.button(f"بدء المراجعة الأكاديمية ({st.session_state.total_pages} محاولة)"):
             if deduct_attempt(st.session_state.total_pages):
-                st.success("تمت المراجعة.")
-                st.download_button("📥 تحميل Word", create_word_file("نص مراجع"), "review.docx")
+                doc = fitz.open(stream=file_bytes, filetype="pdf")
+                all_text = "\n".join([page.get_text() for page in doc])
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Review this text:\n{all_text[:12000]}"}])
+                st.success("تمت المراجعة:")
+                st.write(res.choices[0].message.content)
+                st.download_button("📥 تحميل المراجعة (Word)", create_word_file(res.choices[0].message.content), "reviewed.docx")
 
-    with tabs[3]: # المعاينة
-        doc = fitz.open(stream=doc_bytes, filetype="pdf")
-        p_num = st.number_input("الصفحة:", 1, len(doc), 1)
-        task = st.text_area("المهمة:")
-        if st.button("معالجة الصفحة"):
-            if deduct_attempt(1):
-                st.success("تمت المعالجة بنجاح.")
+    with tabs[3]: # المعاينة والتحليل
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
+        col_left, col_right = st.columns([1, 2])
+        with col_left:
+            p_num = st.number_input("رقم الصفحة:", 1, len(doc), 1)
+            user_task = st.text_area("المهمة المطلوبة:")
+            if st.button("معالجة الصفحة"):
+                if deduct_attempt(1):
+                    ai_res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"نص: {doc[p_num-1].get_text()}\nمهمة: {user_task}"}])
+                    st.success(ai_res.choices[0].message.content)
+        with col_right:
+            pix = doc[p_num-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
+            st.image(Image.open(io.BytesIO(pix.tobytes())), caption=f"معاينة الصفحة {p_num}")
 
 st.markdown("<br><hr><p style='text-align:center; color:black;'>ScholarNode Academy © 2026</p>", unsafe_allow_html=True)
