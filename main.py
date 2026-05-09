@@ -11,12 +11,12 @@ from docx.shared import Pt
 from openai import OpenAI
 import time
 
-# --- [كود رقم 6] - بروتوكول الحماية المطلقة والشاملة ---
+# --- [كود رقم 6 المعتمد] - بروتوكول الحماية المطلقة الصارم ---
 API_KEY = st.secrets["OPENAI_API_KEY"]
 client = OpenAI(api_key=API_KEY)
 DB_CODES = "scholar_main_db.csv"
 
-# --- وظائف السياسة المادية والمعالجة الذكية ---
+# --- وظائف المعالجة الذكية ---
 def create_word_file(text_content):
     doc = Document()
     style = doc.styles['Normal']
@@ -44,11 +44,12 @@ def deduct_attempt(amount):
     return False
 
 def run_progress_with_percent():
-    p_bar = st.progress(0, text="جاري المعالجة الأكاديمية... 0%")
+    placeholder = st.empty()
     for p in range(1, 101):
         time.sleep(0.01)
-        p_bar.progress(p, text=f"جاري المعالجة الأكاديمية... {p}%")
-    return p_bar
+        placeholder.progress(p, text=f"جاري المعالجة الأكاديمية... {p}%")
+    time.sleep(0.3)
+    placeholder.empty()
 
 # --- تنسيق الواجهة (CSS) ---
 st.set_page_config(page_title="ScholarNode Academy", layout="wide")
@@ -58,8 +59,8 @@ st.markdown("""
 .stDeployButton {display:none;}
 .main-header { background: #1e3a8a; color: white !important; padding: 20px; text-align: center; border-radius: 15px; border: 4px solid #facc15; }
 .payment-box { background: #1e3a8a; color: white; padding: 15px; border-radius: 10px; border: 2px solid #facc15; }
-.price-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-.price-table th { background: #ef4444; color: white; padding: 10px; }
+.price-table { width: 100%; border-collapse: collapse; }
+.price-table th { background: #ef4444; color: white; padding: 8px; }
 .price-table td { border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
@@ -70,7 +71,7 @@ with st.sidebar:
     st.markdown(f'<div class="payment-box">👤 <b>الاسم:</b> HAYDER Z. JASIM<br>💳 <b>الماستر:</b> 8369719342<br>📞 <b>الدعم:</b> 07879974395</div>', unsafe_allow_html=True)
     if "auth" in st.session_state:
         st.write(f"🎟️ الكود: `{st.session_state.code}`")
-        if st.button("🔴 خروج"): st.session_state.clear(); st.rerun()
+        if st.button("🔴 تسجيل خروج"): st.session_state.clear(); st.rerun()
     st.markdown("### 🏷️ جدول الكروت")
     st.markdown("""<table class="price-table"><tr><th>الفئة</th><th>محاولات</th></tr><tr><td>10k</td><td>66</td></tr><tr><td>20k</td><td>133</td></tr><tr><td>50k</td><td>333</td></tr><tr><td>100k</td><td>666</td></tr></table>""", unsafe_allow_html=True)
 
@@ -89,74 +90,68 @@ if "auth" not in st.session_state:
 # --- الواجهة الرئيسية ---
 st.markdown(f'<div class="main-header"><h1>مرحباً بك دكتور Courage</h1><h2>الرصيد: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
 
-# 1. دعم كافة ملفات المايكروسوفت أوفيس في الأعلى
+# الرفع يدعم كافة الصيغ
 up = st.file_uploader("📂 ارفع ملف البحث (PDF, DOCX, XLSX, PPTX)", type=["pdf", "docx", "xlsx", "pptx"])
 
 tabs = st.tabs(["💬 المستشار الذكي", "🌍 الترجمة الأكاديمية", "🎓 المراجعة العلمية", "📄 معاينة الملف"])
 
-# 2. المستشار الذكي (السياسة المالية: 700 كلمة = 33 محاولة)
+# 1. المستشار الذكي (700 كلمة = 33 محاولة)
 with tabs[0]:
     st.subheader("🎓 مستشار البحوث الرصينة")
     c_p = st.chat_input("اطلب موضوع البحث التفصيلي هنا...")
     if c_p:
-        sys_msg = "أنت بروفيسور خبير. اكتب بحثاً تفصيلياً طويلاً جداً مع توثيق شيكاغو (Chicago Style). اسهب في التفاصيل والمصادر."
+        sys_msg = "أنت بروفيسور خبير. اكتب بحثاً تفصيلياً طويلاً جداً مع توثيق شيكاغو (Chicago Style)."
         res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": sys_msg}, {"role": "user", "content": c_p}])
         ans = res.choices[0].message.content
-        
-        # تطبيق السياسة المالية (700 كلمة = 33 محاولة)
-        word_count = len(ans.split())
-        cost = math.ceil((word_count / 700) * 33)
-        if cost < 1: cost = 1
-        
+        cost = math.ceil((len(ans.split()) / 700) * 33)
         if deduct_attempt(cost):
             run_progress_with_percent()
             st.markdown(ans)
-            st.download_button("📥 تحميل المخرج (Word)", data=create_word_file(ans), file_name="Research_Output.docx")
-        else: st.error("عذراً، رصيدك لا يكفي لتوليد هذا البحث.")
+            st.download_button("📥 تحميل البحث (Word)", data=create_word_file(ans), file_name="Research.docx", key="dw_smart")
+        else: st.error("رصيدك لا يكفي")
 
-# 3. الترجمة الأكاديمية (مع قائمة اللغة)
+# 2. الترجمة الأكاديمية (اختيار لغة + ملفات أوفيس)
 with tabs[1]:
     st.subheader("🌍 الترجمة الأكاديمية")
-    t_lang = st.selectbox("ترجم هذا الملف إلى:", ["العربية", "English"], key="t_lang_box")
+    t_lang = st.selectbox("ترجم الملف إلى:", ["العربية", "English"], key="t_lang_box")
     if st.button("بدء الترجمة"):
         if up and deduct_attempt(10):
             run_progress_with_percent()
             res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate strictly to {t_lang}."}])
-            translated = res.choices[0].message.content
-            st.download_button("📥 تحميل المترجم (Word)", data=create_word_file(translated), file_name=f"Translated_{t_lang}.docx")
+            trans_text = res.choices[0].message.content
+            st.success("تمت الترجمة بنجاح!")
+            st.download_button("📥 تحميل المترجم (Word)", data=create_word_file(trans_text), file_name=f"Translated_{t_lang}.docx", key="dw_trans")
         elif not up: st.warning("يرجى رفع ملف أولاً")
 
-# 4. المراجعة العلمية (مع قائمة اللغة)
+# 3. المراجعة العلمية (بدء فوري + لغة)
 with tabs[2]:
     st.subheader("🎓 مراجعة نقدية علمية")
     r_lang = st.selectbox("لغة التقرير:", ["العربية", "English"], key="r_lang_box")
-    if st.button("توليد التقرير"):
+    if st.button("توليد تقرير المراجعة"):
         if up and deduct_attempt(10):
             run_progress_with_percent()
-            res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": f"Extensive academic review in {r_lang}."}])
-            review = res.choices[0].message.content
-            st.markdown(review)
-            st.download_button("📥 تحميل المراجعة (Word)", data=create_word_file(review), file_name="Academic_Review.docx")
+            res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": f"Academic review in {r_lang}."}])
+            rev_text = res.choices[0].message.content
+            st.markdown(rev_text)
+            st.download_button("📥 تحميل المراجعة (Word)", data=create_word_file(rev_text), file_name="Review.docx", key="dw_rev")
         elif not up: st.warning("يرجى رفع ملف أولاً")
 
-# 5. معاينة الملف (دعم PDF + ملفات Office)
+# 4. معاينة الملف الشاملة
 with tabs[3]:
     if up:
-        st.write(f"📄 **اسم الملف:** {up.name}")
         if up.type == "application/pdf":
             up.seek(0); doc_v = fitz.open(stream=up.read(), filetype="pdf")
             p_idx = st.number_input("الصفحة:", 1, len(doc_v), 1)
             pix = doc_v[p_idx-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
             st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
-        elif up.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        elif "officedocument.wordprocessingml" in up.type:
             doc = Document(up)
-            text = "\n".join([p.text for p in doc.paragraphs[:20]]) # معاينة أول 20 فقرة
-            st.text_area("معاينة نصية لملف الوورد:", text, height=300)
-        elif up.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+            full_text = "\n".join([para.text for para in doc.paragraphs[:15]])
+            st.text_area("معاينة نص الوورد:", full_text, height=250)
+        elif "spreadsheetml" in up.type:
             df = pd.read_excel(up)
-            st.dataframe(df.head(20)) # معاينة أول 20 سطر
-        else:
-            st.success("تم رفع الملف بنجاح وهو جاهز للمعالجة الأكاديمية.")
-    else: st.info("يرجى رفع ملف (PDF أو Office) للمعاينة.")
+            st.dataframe(df.head(20))
+        else: st.info("تم رفع الملف بنجاح.")
+    else: st.info("يرجى رفع ملف للمعاينة.")
 
 st.markdown("<br><hr><p style='text-align:center;'>ScholarNode Academy © 2026</p>", unsafe_allow_html=True)
