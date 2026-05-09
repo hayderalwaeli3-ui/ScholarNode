@@ -129,30 +129,40 @@ if "auth" not in st.session_state:
             st.error("الكود غير صحيح")
     st.stop()
 
-# --- قسم لوحة الإدارة المطوّر (توليد تلقائي) ---
+# --- قسم لوحة الإدارة (السياسة المالية الجديدة: 100 محاولة لكل 10 آلاف) ---
 if st.session_state.get('admin_view', False):
-    st.markdown('<div class="admin-area"><h3>🛠️ لوحة تحكم الإدارة الأكاديمية</h3>', unsafe_allow_html=True)
-    admin_tab1, admin_tab2 = st.tabs(["🎫 إضافة كود جديد", "📋 كشوفات الأكواد"])
+    st.markdown('<div class="admin-area"><h3>🛠️ إدارة اشتراكات ScholarNode</h3>', unsafe_allow_html=True)
+    admin_tab1, admin_tab2 = st.tabs(["🎫 إصدار كروت جديدة", "📋 كشف الأكواد"])
     
     with admin_tab1:
+        st.info("💡 السياسة الحالية: 100 محاولة لكل 10,000 دينار عراقي")
+        
+        # 1. اختيار قيمة الكارت لتحديد المحاولات تلقائياً
+        card_value = st.selectbox("اختر قيمة الكارت (دينار عراقي):", 
+                                 [10000, 20000, 30000, 40000, 50000, 100000], 
+                                 format_func=lambda x: f"{x:,} دينار")
+        
+        # 2. الحسبة الآلية للمحاولات (القيمة / 100)
+        auto_credit = int(card_value / 100)
+        
         col_gen1, col_gen2 = st.columns([2, 1])
         
-        # وظيفة توليد كود عشوائي
         if "generated_code" not in st.session_state:
             st.session_state.generated_code = ""
             
         with col_gen2:
             if st.button("🔄 توليد كود عشوائي"):
-                # توليد كود مكون من حروف كبيرة وأرقام (مثلاً: SN-A8B2)
-                random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+                # توليد كود أطول قليلاً للأمان
+                random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
                 st.session_state.generated_code = f"SN-{random_suffix}"
         
         with col_gen1:
-            c_new = st.text_input("الكود (يمكنك كتابته أو توليده):", value=st.session_state.generated_code)
+            c_new = st.text_input("كود التفعيل:", value=st.session_state.generated_code)
             
-        c_credit = st.number_input("الرصيد (محاولات):", min_value=1, value=66)
+        # الرصيد يظهر تلقائياً بناءً على السعر المختار
+        c_credit = st.number_input("الرصيد الممنوح (محاولات):", min_value=1, value=auto_credit)
         
-        if st.button("✅ تفعيل وحفظ الكود فوراً"):
+        if st.button("✅ تفعيل وحفظ الكود في قاعدة البيانات"):
             if c_new:
                 df = pd.read_csv(DB_CODES)
                 new_entry = pd.DataFrame([{
@@ -160,15 +170,14 @@ if st.session_state.get('admin_view', False):
                     "credit": c_credit, 
                     "remaining": c_credit, 
                     "status": "Active", 
-                    "activation_date": datetime.now().date(), 
-                    "expiry_date": (datetime.now() + timedelta(days=30)).date()
+                    "activation_date": datetime.now().strftime('%Y-%m-%d'),
+                    "price_point": f"{card_value:,} IQD"
                 }])
                 pd.concat([df, new_entry], ignore_index=True).to_csv(DB_CODES, index=False)
-                st.success(f"تم تفعيل الكود بنجاح: {c_new}")
-                # تفريغ الكود المولد للاستعداد للكود القادم
-                st.session_state.generated_code = ""
+                st.success(f"تم بنجاح! كود بقيمة {card_value:,} د.ع برصيد {c_credit} محاولة.")
+                st.session_state.generated_code = "" 
             else:
-                st.error("يرجى توليد أو كتابة كود أولاً!")
+                st.error("يرجى توليد الكود أولاً")
                 
     with admin_tab2:
         st.dataframe(pd.read_csv(DB_CODES), use_container_width=True)
