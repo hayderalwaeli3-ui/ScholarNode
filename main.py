@@ -14,7 +14,7 @@ from docx.shared import Pt
 from openai import OpenAI
 import time
 
-# --- [كود رقم ثمانية] - بروتوكول الحماية المطلقة ---
+# --- [كود رقم تسعة] - بروتوكول الحماية المطلقة ---
 API_KEY = st.secrets["OPENAI_API_KEY"]
 client = OpenAI(api_key=API_KEY)
 DB_CODES = "scholar_main_db.csv"
@@ -138,14 +138,13 @@ with tabs[0]:
         last_response = st.session_state.chat_history[-1]["content"]
         st.download_button("📥 تحميل الرد الحالي (Word)", data=create_word_file(last_response), file_name="Academic_Research.docx", key="static_chat_dl")
 
-# 2. الترجمة والمراجعة والمعاينة (نظام المعالجة المتسلسلة)
+# 2. الترجمة والمراجعة والمعاينة
 if up:
     up.seek(0); doc_v = fitz.open(stream=up.read(), filetype="pdf"); p_count = len(doc_v)
     
     with tabs[1]:
         st.subheader("🌍 ترجمة الملف بالكامل")
         t_lang = st.selectbox("اللغة المستهدفة للترجمة:", ["العربية", "English"], key="t_lang")
-        
         if st.button(f"بدء ترجمة {p_count} صفحة"):
             if deduct_attempt(p_count):
                 full_translation = ""
@@ -153,49 +152,61 @@ if up:
                 for i in range(p_count):
                     page_text = doc_v[i].get_text()
                     if page_text.strip():
-                        res = client.chat.completions.create(
-                            model="gpt-4o",
-                            messages=[{"role": "user", "content": f"Translate this academic page to {t_lang}: {page_text}"}]
-                        )
+                        res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate this academic page to {t_lang}: {page_text}"}])
                         full_translation += res.choices[0].message.content + "\n\n"
                     percent = int(((i + 1) / p_count) * 100)
                     prog_placeholder.progress(percent, text=f"جاري ترجمة الصفحة {i+1} من {p_count}")
                 st.session_state.translation_result = full_translation
                 prog_placeholder.success("✅ تمت الترجمة بنجاح!")
-        
         if "translation_result" in st.session_state:
             st.download_button("📥 تحميل الملف المترجم", data=create_word_file(st.session_state.translation_result), file_name="Translated_Book.docx")
 
     with tabs[2]:
         st.subheader("🎓 مراجعة نقدية أكاديمية")
-        # التعديل رقم 1: إضافة قائمة اختيار لغة المراجعة
         review_lang = st.selectbox("اختر لغة النقد الأكاديمي:", ["العربية", "English"], key="rev_lang")
-        
         if st.button("توليد تقرير المراجعة الشامل"):
             if deduct_attempt(p_count):
                 prog_placeholder = st.empty()
                 full_review = ""
                 for i in range(0, p_count, 10):
                     chunk = "\n".join([doc_v[j].get_text() for j in range(i, min(i+10, p_count))])
-                    res = client.chat.completions.create(
-                        model="gpt-4o", 
-                        messages=[{"role": "user", "content": f"Provide a detailed academic review and critique in {review_lang} for this section: {chunk}"}]
-                    )
+                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Provide an academic review in {review_lang} for: {chunk}"}])
                     full_review += res.choices[0].message.content + "\n"
                     percent = int(((i + 10) / p_count) * 100)
-                    prog_placeholder.progress(min(percent, 100), text=f"جاري التحليل النقدي باللغة {review_lang}...")
-                
+                    prog_placeholder.progress(min(percent, 100), text=f"جاري التحليل النقدي...")
                 st.session_state.review_result = full_review
                 prog_placeholder.empty()
-
         if "review_result" in st.session_state:
             st.markdown(st.session_state.review_result)
             st.download_button("📥 تحميل تقرير المراجعة", data=create_word_file(st.session_state.review_result), file_name="Academic_Review.docx")
 
     with tabs[3]:
-        p_num = st.number_input("الصفحة رقم:", 1, p_count, 1)
+        st.subheader("📄 معاينة ومناقشة الملف")
+        # التعديل المطلوب: إضافة مربع الحوار "ماذا تريد من البحث؟"
+        p_num = st.number_input("عرض الصفحة رقم:", 1, p_count, 1)
+        
+        st.markdown("---")
+        user_query = st.text_input("💬 ماذا تريد من البحث؟ (اسأل المستشار عن محتوى هذه الصفحة):")
+        
+        if st.button("إرسال السؤال"):
+            if user_query:
+                if deduct_attempt(1):
+                    with st.spinner("جاري استخراج الإجابة..."):
+                        page_content = doc_v[p_num-1].get_text()
+                        res = client.chat.completions.create(
+                            model="gpt-4o",
+                            messages=[
+                                {"role": "system", "content": "أنت مساعد أكاديمي خبير. أجب بناءً على النص المرفق فقط."},
+                                {"role": "user", "content": f"النص: {page_content}\n\nالسؤال: {user_query}"}
+                            ]
+                        )
+                        st.info(f"**إجابة المستشار:**\n\n{res.choices[0].message.content}")
+                else:
+                    st.error("رصيدك غير كافٍ لهذه العملية.")
+        
+        st.markdown("---")
         pix = doc_v[p_num-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
         st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
 
-# التعديل رقم 2: تحديث تذييل الصفحة كما هو مطلوب
+# تذييل الصفحة الثابت
 st.markdown("<br><hr><p style='text-align:center;'>ScholarNode Academy 2026</p>", unsafe_allow_html=True)
