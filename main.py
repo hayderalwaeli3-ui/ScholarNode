@@ -129,22 +129,50 @@ if "auth" not in st.session_state:
             st.error("الكود غير صحيح")
     st.stop()
 
-# --- قسم لوحة الإدارة (يظهر فقط عند الضغط على زر الإدارة) ---
+# --- قسم لوحة الإدارة المطوّر (توليد تلقائي) ---
 if st.session_state.get('admin_view', False):
     st.markdown('<div class="admin-area"><h3>🛠️ لوحة تحكم الإدارة الأكاديمية</h3>', unsafe_allow_html=True)
     admin_tab1, admin_tab2 = st.tabs(["🎫 إضافة كود جديد", "📋 كشوفات الأكواد"])
+    
     with admin_tab1:
-        c_new = st.text_input("الكود الجديد:")
+        col_gen1, col_gen2 = st.columns([2, 1])
+        
+        # وظيفة توليد كود عشوائي
+        if "generated_code" not in st.session_state:
+            st.session_state.generated_code = ""
+            
+        with col_gen2:
+            if st.button("🔄 توليد كود عشوائي"):
+                # توليد كود مكون من حروف كبيرة وأرقام (مثلاً: SN-A8B2)
+                random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+                st.session_state.generated_code = f"SN-{random_suffix}"
+        
+        with col_gen1:
+            c_new = st.text_input("الكود (يمكنك كتابته أو توليده):", value=st.session_state.generated_code)
+            
         c_credit = st.number_input("الرصيد (محاولات):", min_value=1, value=66)
-        if st.button("تفعيل وحفظ الكود"):
-            df = pd.read_csv(DB_CODES)
-            new_data = pd.DataFrame([{"code": c_new, "credit": c_credit, "remaining": c_credit, "status": "Active", "activation_date": datetime.now(), "expiry_date": (datetime.now() + timedelta(days=30))}])
-            pd.concat([df, new_data], ignore_index=True).to_csv(DB_CODES, index=False)
-            st.success("تم الحفظ بنجاح")
+        
+        if st.button("✅ تفعيل وحفظ الكود فوراً"):
+            if c_new:
+                df = pd.read_csv(DB_CODES)
+                new_entry = pd.DataFrame([{
+                    "code": c_new.strip(), 
+                    "credit": c_credit, 
+                    "remaining": c_credit, 
+                    "status": "Active", 
+                    "activation_date": datetime.now().date(), 
+                    "expiry_date": (datetime.now() + timedelta(days=30)).date()
+                }])
+                pd.concat([df, new_entry], ignore_index=True).to_csv(DB_CODES, index=False)
+                st.success(f"تم تفعيل الكود بنجاح: {c_new}")
+                # تفريغ الكود المولد للاستعداد للكود القادم
+                st.session_state.generated_code = ""
+            else:
+                st.error("يرجى توليد أو كتابة كود أولاً!")
+                
     with admin_tab2:
-        st.dataframe(pd.read_csv(DB_CODES))
+        st.dataframe(pd.read_csv(DB_CODES), use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
-
 # --- الواجهة الرئيسية للمنصة ---
 st.markdown(f'<div class="main-header"><h1>مرحباً دكتور Courage</h1><h2>الرصيد المتاح: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
 up = st.file_uploader("📂 ارفع ملف PDF للمراجعة أو الترجمة", type=["pdf"])
