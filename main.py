@@ -14,7 +14,7 @@ from docx.shared import Pt
 from openai import OpenAI
 import time
 
-# --- [كود رقم 10] - بروتوكول الحماية المطلقة (السياسة المالية الاقتصادية) ---
+# --- [كود رقم 10] - بروتوكول الحماية المطلقة (النسخة النهائية المربحة) ---
 API_KEY = st.secrets["OPENAI_API_KEY"]
 client = OpenAI(api_key=API_KEY)
 DB_CODES = "scholar_main_db.csv"
@@ -56,7 +56,7 @@ def deduct_attempt(amount=1):
             return True
     return False
 
-# --- تنسيق الألوان الذكي (CSS) ---
+# --- بروتوكول الحماية المطلقة وتنسيق الألوان الذكي (CSS) ---
 st.set_page_config(page_title="ScholarNode Academy", layout="wide", initial_sidebar_state="expanded")
 st.markdown("""
 <style>
@@ -86,16 +86,16 @@ with st.sidebar:
         if st.button("🔴 تسجيل الخروج"):
             st.session_state.clear(); st.rerun()
 
-    st.markdown("### 🏷️ جدول فئات الكروت المحدث")
+    st.markdown("### 🏷️ جدول فئات الكروت")
     st.markdown("""
     <table class="price-table">
-        <tr><th>الفئة (دينار)</th><th>محاولات (ورقة)</th></tr>
-        <tr><td>10,000</td><td>600</td></tr>
-        <tr><td>20,000</td><td>1200</td></tr>
-        <tr><td>30,000</td><td>1800</td></tr>
-        <tr><td>40,000</td><td>2400</td></tr>
-        <tr><td>50,000</td><td>3000</td></tr>
-        <tr><td>100,000</td><td>6000</td></tr>
+        <tr><th>الفئة (دينار)</th><th>محاولات</th></tr>
+        <tr><td>10,000</td><td>66</td></tr>
+        <tr><td>20,000</td><td>133</td></tr>
+        <tr><td>30,000</td><td>200</td></tr>
+        <tr><td>40,000</td><td>266</td></tr>
+        <tr><td>50,000</td><td>333</td></tr>
+        <tr><td>100,000</td><td>666</td></tr>
     </table>
     """, unsafe_allow_html=True)
 
@@ -133,20 +133,24 @@ with tabs[0]:
             st.session_state.chat_history.append({"role": "user", "content": c_prompt})
             st.session_state.chat_history.append({"role": "assistant", "content": response})
             st.rerun()
+    
+    if st.session_state.chat_history:
+        last_response = st.session_state.chat_history[-1]["content"]
+        st.download_button("📥 تحميل الرد الحالي (Word)", data=create_word_file(last_response), file_name="Academic_Research.docx", key="static_chat_dl")
 
 # 2. الترجمة والمراجعة والمعاينة
 if up:
     up.seek(0); doc_v = fitz.open(stream=up.read(), filetype="pdf"); p_count = len(doc_v)
     
     with tabs[1]:
-        st.subheader("🌍 ترجمة الملف بنظام الدمج الموفر")
+        st.subheader("🌍 ترجمة الملف بالكامل")
         t_lang = st.selectbox("اللغة المستهدفة للترجمة:", ["العربية", "English"], key="t_lang")
         if st.button(f"بدء ترجمة {p_count} صفحة"):
             if deduct_attempt(p_count):
                 full_translation = ""
                 prog_placeholder = st.empty()
                 
-                # السياسة المالية الجديدة: دمج كل 10 صفحات لتقليل استهلاك OpenAI واستخدام gpt-4o-mini
+                # --- التعديل الاقتصادي لزيادة الربح: دمج 10 صفحات واستخدام gpt-4o-mini ---
                 for i in range(0, p_count, 10):
                     batch_text = "\n".join([doc_v[j].get_text() for j in range(i, min(i+10, p_count))])
                     if batch_text.strip():
@@ -155,12 +159,11 @@ if up:
                             messages=[{"role": "user", "content": f"Translate to {t_lang}: {batch_text}"}]
                         )
                         full_translation += res.choices[0].message.content + "\n\n"
-                    
                     percent = int((min(i + 10, p_count) / p_count) * 100)
-                    prog_placeholder.progress(percent, text=f"جاري معالجة الصفحات {i+1} إلى {min(i+10, p_count)}")
+                    prog_placeholder.progress(percent, text=f"جاري الترجمة...")
                 
                 st.session_state.translation_result = full_translation
-                prog_placeholder.success("✅ تمت الترجمة بنجاح وبأقل تكلفة!")
+                prog_placeholder.success("✅ تمت الترجمة بنجاح!")
         
         if "translation_result" in st.session_state:
             st.download_button("📥 تحميل الملف المترجم", data=create_word_file(st.session_state.translation_result), file_name="Translated_Book.docx")
@@ -180,6 +183,10 @@ if up:
                     prog_placeholder.progress(min(percent, 100), text=f"جاري التحليل النقدي...")
                 st.session_state.review_result = full_review
                 prog_placeholder.empty()
+        
+        if "review_result" in st.session_state:
+            st.markdown(st.session_state.review_result)
+            st.download_button("📥 تحميل تقرير المراجعة", data=create_word_file(st.session_state.review_result), file_name="Academic_Review.docx")
 
     with tabs[3]:
         st.subheader("📄 معاينة ومناقشة الملف")
@@ -199,8 +206,11 @@ if up:
                             ]
                         )
                         st.info(f"**إجابة المستشار:**\n\n{res.choices[0].message.content}")
+                else: st.error("رصيدك غير كافٍ لهذه العملية.")
+        
         st.markdown("---")
         pix = doc_v[p_num-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
         st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
 
+# تذييل الصفحة الثابت
 st.markdown("<br><hr><p style='text-align:center;'>ScholarNode Academy 2026</p>", unsafe_allow_html=True)
