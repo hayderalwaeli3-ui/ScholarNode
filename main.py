@@ -14,7 +14,7 @@ from docx.shared import Pt
 from openai import OpenAI
 import time
 
-# --- [كود رقم 11] - بروتوكول الحماية المطلقة (نسخة المعالجة الفورية المستقرة) ---
+# --- [كود رقم 11] - بروتوكول الحماية المطلقة (نسخة المعالجة الفورية) ---
 API_KEY = st.secrets["OPENAI_API_KEY"]
 client = OpenAI(api_key=API_KEY)
 DB_CODES = "scholar_main_db.csv"
@@ -113,7 +113,7 @@ if "auth" not in st.session_state:
     st.stop()
 
 # --- الواجهة الرئيسية ---
-st.markdown(f'<div class="main-header"><h1>مرحباً دكتور Courage</h1><h2>الرصيد: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="main-header"><h1>مرحباً بك دكتور Courage</h1><h2>الرصيد: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
 up = st.file_uploader("📂 ارفع ملف PDF للمراجعة أو الترجمة", type=["pdf"])
 
 tabs = st.tabs(["💬 المستشار الذكي", "🌍 الترجمة الأكاديمية", "🎓 المراجعة العلمية", "📄 معاينة الملف"])
@@ -148,7 +148,7 @@ if up:
                     full_translation = ""
                     prog_placeholder = st.empty()
                     
-                    # نظام الدمج الاقتصادي لزيادة الربح وتوفير رصيد OpenAI الخاص بك
+                    # نظام الدمج الاقتصادي لزيادة الربح وتوفير OpenAI
                     for i in range(0, p_count, 10):
                         batch_text = "\n".join([doc_v[j].get_text() for j in range(i, min(i+10, p_count))])
                         if batch_text.strip():
@@ -194,7 +194,7 @@ if up:
         st.subheader("📄 معاينة ومناقشة الملف")
         p_num = st.number_input("عرض الصفحة رقم:", 1, p_count, 1)
         st.markdown("---")
-        user_query = st.text_input("💬 اسأل المستشار عن محتوى هذه الصفحة:")
+        user_query = st.text_input("💬 ماذا تريد من البحث؟ (اسأل المستشار عن محتوى هذه الصفحة):")
         if st.button("إرسال السؤال"):
             if user_query:
                 with st.spinner("⌛ جاري استخراج الإجابة من الصفحة..."):
