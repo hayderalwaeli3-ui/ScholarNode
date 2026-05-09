@@ -14,7 +14,7 @@ from docx.shared import Pt
 from openai import OpenAI
 import time
 
-# --- [كود رقم سبعة] - بروتوكول الحماية المطلقة ---
+# --- [كود رقم سبعة] - بروتوكول الحماية المطلقة المطور ---
 API_KEY = st.secrets["OPENAI_API_KEY"]
 client = OpenAI(api_key=API_KEY)
 DB_CODES = "scholar_main_db.csv"
@@ -55,15 +55,6 @@ def deduct_attempt(amount=1):
             st.session_state.credit = df.at[idx, 'remaining']
             return True
     return False
-
-# --- وظيفة شريط النسبة المئوية المتزامن ---
-def run_synced_progress(text="جاري المعالجة الأكاديمية..."):
-    placeholder = st.empty()
-    for p in range(1, 101):
-        time.sleep(0.01)
-        placeholder.progress(p, text=f"{text} {p}%")
-    time.sleep(0.3)
-    return placeholder
 
 # --- بروتوكول الحماية المطلقة وتنسيق الألوان الذكي (CSS) ---
 st.set_page_config(page_title="ScholarNode Academy", layout="wide", initial_sidebar_state="expanded")
@@ -106,7 +97,7 @@ with st.sidebar:
         <tr><td>50,000</td><td>333</td></tr>
         <tr><td>100,000</td><td>666</td></tr>
     </table>
-    """, unsafe_allow_html=True) # تم استعادة الفئات 30 و 40
+    """, unsafe_allow_html=True)
 
 # --- بوابة الدخول ---
 if "auth" not in st.session_state:
@@ -137,43 +128,68 @@ with tabs[0]:
     c_prompt = st.chat_input("اطلب بناء خطة بحثية أو مقال رصين...")
     if c_prompt:
         if deduct_attempt(1):
-            progress_bar = run_synced_progress("جاري إعداد الرد الأكاديمي...")
             res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": "أنت خبير أكاديمي محترف."}] + st.session_state.chat_history + [{"role": "user", "content": c_prompt}])
             response = res.choices[0].message.content
             st.session_state.chat_history.append({"role": "user", "content": c_prompt})
             st.session_state.chat_history.append({"role": "assistant", "content": response})
-            progress_bar.empty()
             st.rerun()
 
     if st.session_state.chat_history:
         last_response = st.session_state.chat_history[-1]["content"]
         st.download_button("📥 تحميل الرد الحالي (Word)", data=create_word_file(last_response), file_name="Academic_Research.docx", key="static_chat_dl")
 
-# 2. الترجمة والمراجعة والمعاينة
+# 2. الترجمة (المعالجة بالدفعات لضمان عدم التوقف)
 if up:
     up.seek(0); doc_v = fitz.open(stream=up.read(), filetype="pdf"); p_count = len(doc_v)
+    
     with tabs[1]:
-        st.subheader("🌍 ترجمة الملف بالكامل")
+        st.subheader("🌍 ترجمة الملف بالكامل (نظام المعالجة المتسلسلة)")
         t_lang = st.selectbox("اللغة المستهدفة:", ["العربية", "English"], key="t_lang")
+        
         if st.button(f"بدء ترجمة {p_count} صفحة"):
             if deduct_attempt(p_count):
-                progress_bar = run_synced_progress("جاري الترجمة...")
-                all_text = "\n".join([p.get_text() for p in doc_v])
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate to {t_lang}: {all_text}"}])
-                st.session_state.translation_result = res.choices[0].message.content
-                progress_bar.empty()
+                full_translation = ""
+                prog_placeholder = st.empty()
+                
+                # المعالجة صفحة بصفحة لضمان الدقة وتفادي رسالة النص طويل
+                for i in range(p_count):
+                    page_text = doc_v[i].get_text()
+                    if page_text.strip():
+                        res = client.chat.completions.create(
+                            model="gpt-4o",
+                            messages=[{"role": "user", "content": f"Translate this academic page to {t_lang}: {page_text}"}]
+                        )
+                        full_translation += res.choices[0].message.content + "\n\n"
+                    
+                    # مزامنة شريط الإنجاز الحقيقية
+                    percent = int(((i + 1) / p_count) * 100)
+                    prog_placeholder.progress(percent, text=f"جاري ترجمة الصفحة {i+1} من {p_count} ({percent}%)")
+                
+                st.session_state.translation_result = full_translation
+                prog_placeholder.success("✅ تمت ترجمة كافة الصفحات بنجاح!")
+            else:
+                st.error("الرصيد غير كافٍ لترجمة هذا العدد من الصفحات.")
+        
         if "translation_result" in st.session_state:
-            st.download_button("📥 تحميل الملف المترجم", data=create_word_file(st.session_state.translation_result), file_name="Translated.docx")
+            st.download_button("📥 تحميل الملف المترجم كاملاً", data=create_word_file(st.session_state.translation_result), file_name="Translated_Book.docx", key="full_trans_dl")
 
     with tabs[2]:
         st.subheader("🎓 مراجعة نقدية أكاديمية")
-        if st.button("توليد تقرير المراجعة"):
+        if st.button("توليد تقرير المراجعة الشامل"):
             if deduct_attempt(p_count):
-                progress_bar = run_synced_progress("جاري التحليل...")
-                all_text = "\n".join([p.get_text() for p in doc_v])
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Review this: {all_text}"}])
-                st.session_state.review_result = res.choices[0].message.content
-                progress_bar.empty()
+                prog_placeholder = st.empty()
+                full_review = ""
+                # معالجة المراجعة أيضاً بنظام الدفعات لضمان عدم الخطأ
+                for i in range(0, p_count, 10):
+                    chunk = "\n".join([doc_v[j].get_text() for j in range(i, min(i+10, p_count))])
+                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Review this academic section: {chunk}"}])
+                    full_review += res.choices[0].message.content + "\n"
+                    percent = int(((i + 10) / p_count) * 100)
+                    prog_placeholder.progress(min(percent, 100), text=f"جاري تحليل المحتوى نقدياً...")
+                
+                st.session_state.review_result = full_review
+                prog_placeholder.empty()
+
         if "review_result" in st.session_state:
             st.markdown(st.session_state.review_result)
             st.download_button("📥 تحميل التقرير", data=create_word_file(st.session_state.review_result), file_name="Review.docx")
@@ -183,4 +199,4 @@ if up:
         pix = doc_v[p_num-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
         st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
 
-st.markdown("<br><hr><p style='text-align:center;'>ScholarNode Academy © 2026 | كود رقم سبعة</p>", unsafe_allow_html=True)
+st.markdown("<br><hr><p style='text-align:center;'>ScholarNode Academy © 2026 | كود رقم سبعة المطور</p>", unsafe_allow_html=True)
