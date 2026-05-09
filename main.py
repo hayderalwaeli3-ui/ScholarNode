@@ -219,13 +219,20 @@ with tabs[0]:
             file_name=f"Research_Plan_{datetime.now().strftime('%Y%m%d')}.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
-# 2. تبويب الترجمة (المطور والاقتصادي)
+# --- 2. كتلة المعالجة الأكاديمية الشاملة (ترجمة + مراجعة + معاينة) ---
+if up:
+    # تهيئة الملف واستخراج عدد الصفحات بشكل آمن
+    up.seek(0)
+    doc_v = fitz.open(stream=up.read(), filetype="pdf")
+    p_count = len(doc_v)
+    
+    # تبويب الترجمة (المطور والاقتصادي)
     with tabs[1]:
         st.subheader("🌍 مترجم ScholarNode الشامل (ترجمة احترافية)")
         t_lang = st.selectbox("اللغة المستهدفة للترجمة:", ["العربية", "English"], key="t_lang_new")
         
         if st.button(f"🚀 بدء ترجمة {p_count} صفحة"):
-            if st.session_state.credit >= p_count:
+            if st.session_state.get('credit', 0) >= p_count:
                 with st.spinner("جاري الترجمة الشاملة..."):
                     if deduct_attempt(p_count):
                         full_translation = ""
@@ -243,7 +250,7 @@ with tabs[0]:
                         st.session_state.translation_result = full_translation
                         st.success("✅ اكتملت الترجمة!")
             else:
-                st.error("عذراً، رصيدك لا يكفي لعدد صفحات الملف.")
+                st.error(f"عذراً، رصيدك الحالي ({st.session_state.get('credit', 0)}) لا يكفي لترجمة {p_count} صفحة.")
         
         if "translation_result" in st.session_state:
             st.download_button(
@@ -252,7 +259,7 @@ with tabs[0]:
                 file_name="ScholarNode_Translated.docx"
             )
 
-    # 3. تبويب المراجعة النقدية (المحاذي برمجياً بشكل صحيح)
+    # تبويب المراجعة النقدية
     with tabs[2]:
         st.subheader("🎓 مراجعة نقدية أكاديمية")
         review_lang = st.selectbox("اختر لغة النقد الأكاديمي:", ["العربية", "English"], key="rev_lang")
@@ -273,6 +280,9 @@ with tabs[0]:
         if "review_result" in st.session_state:
             st.markdown(st.session_state.review_result)
             st.download_button("📥 تحميل تقرير المراجعة", data=create_word_file(st.session_state.review_result), file_name="Academic_Review.docx")
+
+    # تبويب معاينة ومناقشة الملف (تم نقله داخل شرط وجود الملف)
+    with tabs[3]:
         st.subheader("📄 معاينة ومناقشة الملف")
         p_num = st.number_input("عرض الصفحة رقم:", 1, p_count, 1)
         st.markdown("---")
@@ -294,5 +304,11 @@ with tabs[0]:
         st.markdown("---")
         pix = doc_v[p_num-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
         st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
+
+else:
+    # رسالة تظهر للمستخدم عند عدم رفع ملف لتجنب الأخطاء البرمجية
+    with tabs[1]: st.info("📂 يرجى رفع ملف PDF من الأعلى لتفعيل خدمة الترجمة.")
+    with tabs[2]: st.info("📂 يرجى رفع ملف PDF من الأعلى لتفعيل خدمة المراجعة النقدية.")
+    with tabs[3]: st.info("📂 يرجى رفع ملف PDF من الأعلى لمعاينة الصفحات.")
 
 st.markdown("<br><hr><p style='text-align:center;'>ScholarNode Academy 2026</p>", unsafe_allow_html=True)
