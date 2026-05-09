@@ -10,14 +10,13 @@ from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from openai import OpenAI
 
-# --- 1. إعدادات النظام (حسب ملف الوورد) ---
+# --- إعدادات النظام ---
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 DB_CODES = "scholar_main_db.csv"
 
 if not os.path.exists(DB_CODES):
     pd.DataFrame(columns=["code", "credit", "remaining", "status", "activation_date", "expiry_date"]).to_csv(DB_CODES, index=False)
 
-# --- 2. وظيفة إنشاء ملف Word (حسب ملف الوورد) ---
 def create_word_file(text):
     doc = Document()
     p = doc.add_paragraph(text)
@@ -39,7 +38,7 @@ def deduct_attempt(amount=1):
             return True
     return False
 
-# --- 3. التنسيق البصري الاحترافي ---
+# --- التنسيق البصري ---
 st.set_page_config(page_title="ScholarNode Academy", layout="wide")
 st.markdown("""<style>
     .main-header { background: #1e3a8a; color: white !important; padding: 30px; text-align: center; border-radius: 15px; border: 5px solid #facc15; margin-bottom: 25px; }
@@ -49,7 +48,7 @@ st.markdown("""<style>
     .price-table td { border: 1px solid #ef4444; padding: 8px; text-align: center; color: black; }
 </style>""", unsafe_allow_html=True)
 
-# --- 4. القائمة الجانبية (إعادة الفئات الناقصة وتثبيت الرمز) ---
+# --- القائمة الجانبية ---
 with st.sidebar:
     if "auth" in st.session_state:
         if st.button("🔴 تسجيل الخروج"):
@@ -59,7 +58,6 @@ with st.sidebar:
     st.markdown('<div class="payment-box"><b>🏦 ماستر كارد الرافدين:</b><br>8369719342<br>👤 HAYDER Z. JASIM</div>', unsafe_allow_html=True)
     
     st.markdown("### 🏷️ جدول الكروت")
-    # تم إعادة كافة الفئات هنا كما في طلبك
     st.markdown("""<table class="price-table">
         <tr><th>الفئة (دينار)</th><th>المحاولات</th></tr>
         <tr><td>10,000</td><td>66</td></tr>
@@ -71,10 +69,9 @@ with st.sidebar:
     </table>""", unsafe_allow_html=True)
 
     st.write("---")
-    # تثبيت رمز الإدارة من ملف الوورد
     adm_key = st.text_input("لوحة التحكم (Admin):", type="password")
     if adm_key == "HAYDER_2026":
-        st.success("تم الدخول للمسؤول")
+        st.success("تم الدخول كمسؤول")
         cat = st.selectbox("توليد فئة:", [10, 20, 30, 40, 50, 100])
         if st.button("توليد كود الاشتراك"):
             new_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
@@ -82,27 +79,27 @@ with st.sidebar:
             df = pd.read_csv(DB_CODES)
             new_entry = pd.DataFrame([{"code": new_code, "credit": attempts, "remaining": attempts, "status": "Active", "activation_date": "None", "expiry_date": "None"}])
             pd.concat([df, new_entry]).to_csv(DB_CODES, index=False)
-            st.code(f"الكود المولد: {new_code}")
+            st.code(f"الكود: {new_code}")
 
-# --- 5. بوابة الدخول (كود فقط) ---
+# --- بوابة الدخول ---
 if "auth" not in st.session_state:
     st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align:center;'>🔑 يرجى إدخال كود التفعيل للدخول</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align:center;'>🔐 أدخل كود الاشتراك</h3>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         u_code = st.text_input("كود الكارت:", type="password")
-        if st.button("تفعيل والدخول", use_container_width=True):
+        if st.button("دخول", use_container_width=True):
             df = pd.read_csv(DB_CODES)
             match = df[(df['code'] == u_code.strip()) & (df['status'] == 'Active')]
             if not match.empty:
                 idx = match.index[0]
-                st.session_state.update({"auth": True, "user": "باحث مشترك", "credit": df.at[idx, 'remaining'], "code": u_code.strip()})
+                st.session_state.update({"auth": True, "credit": df.at[idx, 'remaining'], "code": u_code.strip()})
                 st.rerun()
             else: st.error("الكود غير صحيح")
     st.stop()
 
-# --- 6. الواجهة الرئيسية ---
+# --- الواجهة الرئيسية ---
 st.markdown(f'<div class="main-header"><h1>مرحباً دكتور</h1><h2>الرصيد: {st.session_state.credit}</h2></div>', unsafe_allow_html=True)
 up = st.file_uploader("📂 ارفع ملف PDF", type=["pdf"])
 if up:
-    st.success("تم رفع الملف بن
+    st.success("تم رفع الملف بنجاح") # تم تصحيح الخطأ هنا
