@@ -48,13 +48,16 @@ def deduct_attempt(amount):
             return True
     return False
 
-# وظيفة محاكاة شريط التقدم لراحة المستخدم بصرياً
-def show_progress():
-    progress_bar = st.progress(0)
+# وظيفة شريط الإنجاز من 0 إلى 100
+def run_progress_bar():
+    progress_text = "جاري المعالجة... يرجى الانتظار"
+    my_bar = st.progress(0, text=progress_text)
     for percent_complete in range(100):
         time.sleep(0.01)
-        progress_bar.progress(percent_complete + 1)
-    return progress_bar
+        my_bar.progress(percent_complete + 1, text=progress_text)
+    time.sleep(0.5)
+    st.success("✅ اكتملت العملية بنجاح!")
+    my_bar.empty()
 
 # --- بروتوكول الحماية المطلقة وتنسيق الألوان الذكي (CSS) ---
 st.set_page_config(page_title="ScholarNode Academy", layout="wide", initial_sidebar_state="expanded")
@@ -72,17 +75,35 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- القائمة الجانبية (Sidebar) ---
+# --- القائمة الجانبية (Sidebar) كاملة ومحدثة ---
 with st.sidebar:
-    st.markdown("### 🏦 معلومات الحساب والدعم")
-    st.markdown(f'<div class="payment-box">👤 <b>الاسم:</b> HAYDER Z. JASIM<br>💳 <b>ماستر كارد الرافدين:</b><br> 8369719342<br>📞 <b>الدعم والتفعيل:</b> 07715632230</div>', unsafe_allow_html=True)
+    st.markdown("### 🏦 معلومات الحساب والدفع")
+    st.markdown(f"""
+    <div class="payment-box">
+        👤 <b>الاسم:</b> HAYDER Z. JASIM<br>
+        💳 <b>ماستر كارد الرافدين:</b><br> 8369719342<br>
+        📞 <b>الدعم والتفعيل:</b> 07879974395
+    </div>
+    """, unsafe_allow_html=True)
+    
     if "auth" in st.session_state:
         st.write(f"🎟️ **الكود المفعل:** `{st.session_state.code}`")
         if st.button("🔴 تسجيل الخروج"):
             st.session_state.clear()
             st.rerun()
+
     st.markdown("### 🏷️ جدول فئات الكروت")
-    st.markdown("""<table class="price-table"><tr><th>الفئة (دينار)</th><th>محاولات</th></tr><tr><td>10,000</td><td>66</td></tr><tr><td>50,000</td><td>333</td></tr><tr><td>100,000</td><td>666</td></tr></table>""", unsafe_allow_html=True)
+    st.markdown("""
+    <table class="price-table">
+        <tr><th>الفئة (دينار)</th><th>محاولات</th></tr>
+        <tr><td>10,000</td><td>66</td></tr>
+        <tr><td>20,000</td><td>133</td></tr>
+        <tr><td>30,000</td><td>200</td></tr>
+        <tr><td>40,000</td><td>266</td></tr>
+        <tr><td>50,000</td><td>333</td></tr>
+        <tr><td>100,000</td><td>666</td></tr>
+    </table>
+    """, unsafe_allow_html=True)
 
 # --- بوابة الدخول ---
 if "auth" not in st.session_state:
@@ -102,32 +123,31 @@ if "auth" not in st.session_state:
     st.stop()
 
 # --- الواجهة الرئيسية ---
-st.markdown(f'<div class="main-header"><h1>مرحباً بك دكتور {st.session_state.user}</h1><h2>الرصيد: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="main-header"><h1>مرحباً بك دكتور {st.session_state.user}</h1><h2>الرصيد المتوفر: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
 up = st.file_uploader("📂 ارفع ملف PDF للمراجعة أو الترجمة", type=["pdf"])
 
 tabs = st.tabs(["💬 المستشار الذكي", "🌍 الترجمة الأكاديمية", "🎓 المراجعة العلمية", "📄 معاينة الملف"])
 
-# 1. المستشار الذكي
+# 1. تبويب المستشار الذكي
 with tabs[0]:
     st.subheader("🎓 مستشار بناء الخطط والبحوث الأكاديمية")
     if "chat_history" not in st.session_state: st.session_state.chat_history = []
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]): st.markdown(msg["content"])
     
-    c_prompt = st.chat_input("اطلب بناء خطة بحثية...")
+    c_prompt = st.chat_input("اطلب بناء خطة بحثية أو كتابة دراسة...")
     if c_prompt:
         is_research = any(word in c_prompt for word in ["بحث", "دراسة", "أطروحة"])
         cost_att = 10 if is_research else 1
         _, iqd_v = calculate_costs(cost_att)
-        st.warning(f"⚠️ التكلفة: {cost_att} محاولة ({iqd_v} دينار).")
-        if st.button("تأكيد وخصم"):
+        st.warning(f"⚠️ تنبيه: ستكلف العملية {cost_att} محاولات ({iqd_v} دينار).")
+        if st.button("تأكيد وخصم المحاولات"):
             if deduct_attempt(cost_att):
-                p_bar = show_progress()
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": "خبير أكاديمي رصين."}] + st.session_state.chat_history + [{"role": "user", "content": c_prompt}])
+                run_progress_bar()
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": "أنت خبير أكاديمي رصين."}] + st.session_state.chat_history + [{"role": "user", "content": c_prompt}])
                 st.markdown(res.choices[0].message.content)
                 st.session_state.chat_history.append({"role": "user", "content": c_prompt})
                 st.session_state.chat_history.append({"role": "assistant", "content": res.choices[0].message.content})
-                p_bar.empty()
 
 if up:
     up.seek(0)
@@ -137,37 +157,38 @@ if up:
 
     with tabs[1]:
         st.subheader("🌍 ترجمة أكاديمية كاملة")
+        t_lang = st.selectbox("اختر لغة الترجمة المستهدفة:", ["العربية", "English"])
         st.markdown(f'<div class="cost-alert">💰 التكلفة: {att_req} محاولة | {iqd_req} دينار</div>', unsafe_allow_html=True)
-        if st.button("تأكيد الترجمة"):
+        if st.button("تأكيد ترجمة الملف"):
             if deduct_attempt(att_req):
-                p_bar = show_progress()
+                run_progress_bar()
                 all_text = "\n".join([p.get_text() for p in doc_v])
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate to Arabic:\n{all_text}"}])
-                st.download_button("📥 تحميل الترجمة", data=create_word_file(res.choices[0].message.content), file_name="trans.docx")
-                p_bar.empty()
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate this to {t_lang} professionally:\n{all_text}"}])
+                st.download_button("📥 تحميل الترجمة", data=create_word_file(res.choices[0].message.content), file_name=f"translated_{t_lang}.docx")
 
     with tabs[2]:
         st.subheader("🎓 مراجعة نقدية (جاهزة للنشر)")
+        r_lang = st.selectbox("اختر لغة التقرير:", ["العربية", "English"])
         st.markdown(f'<div class="cost-alert">💰 التكلفة: {att_req} محاولة | {iqd_req} دينار</div>', unsafe_allow_html=True)
-        if st.button("توليد التقرير"):
+        if st.button("توليد التقرير الأكاديمي"):
             if deduct_attempt(att_req):
-                p_bar = show_progress()
+                run_progress_bar()
                 all_text = "\n".join([p.get_text() for p in doc_v])
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Academic review for: {all_text}"}])
-                st.download_button("📥 تحميل التقرير", data=create_word_file(res.choices[0].message.content), file_name="review.docx")
-                p_bar.empty()
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Provide a complete academic critical review in {r_lang} for this text: {all_text}"}])
+                st.download_button("📥 تحميل التقرير", data=create_word_file(res.choices[0].message.content), file_name="academic_review.docx")
 
     with tabs[3]:
         st.subheader("📄 معاينة ومناقشة الملف")
-        p_idx = st.number_input("الصفحة:", 1, p_count, 1)
-        q_p = st.text_input("اسأل عن الصفحة:")
-        if st.button("إرسال السؤال"):
-            if deduct_attempt(1):
-                p_bar = show_progress()
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": f"Context: {doc_v[p_idx-1].get_text()}"}, {"role": "user", "content": q_p}])
-                st.info(res.choices[0].message.content)
-                p_bar.empty()
+        col_ctrl, _ = st.columns([3, 1])
+        with col_ctrl:
+            p_idx = st.number_input("الصفحة:", 1, p_count, 1)
+            q_prompt = st.text_input("اسأل عن محتوى هذه الصفحة:")
+            if st.button("إرسال السؤال"):
+                if deduct_attempt(1):
+                    run_progress_bar()
+                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": f"Context: {doc_v[p_idx-1].get_text()}"}, {"role": "user", "content": q_prompt}])
+                    st.info(f"**الرد:** {res.choices[0].message.content}")
         pix = doc_v[p_idx-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
-        st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
+        st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True, caption=f"صفحة رقم {p_idx}")
 
-st.markdown("<p style='text-align:center;'>ScholarNode Academy © 2026</p>", unsafe_allow_html=True)
+st.markdown("<br><hr><p style='text-align:center;'>ScholarNode Academy © 2026 | رقم الدعم المحدث: 07879974395</p>", unsafe_allow_html=True)
