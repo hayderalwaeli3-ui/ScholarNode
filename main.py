@@ -14,7 +14,7 @@ from docx.shared import Pt
 from openai import OpenAI
 import time
 
-# --- [كود رقم 10] - بروتوكول الحماية المطلقة (النسخة النهائية المربحة) ---
+# --- [كود رقم 11] - بروتوكول الحماية المطلقة (نسخة المعالجة الفورية) ---
 API_KEY = st.secrets["OPENAI_API_KEY"]
 client = OpenAI(api_key=API_KEY)
 DB_CODES = "scholar_main_db.csv"
@@ -133,10 +133,6 @@ with tabs[0]:
             st.session_state.chat_history.append({"role": "user", "content": c_prompt})
             st.session_state.chat_history.append({"role": "assistant", "content": response})
             st.rerun()
-    
-    if st.session_state.chat_history:
-        last_response = st.session_state.chat_history[-1]["content"]
-        st.download_button("📥 تحميل الرد الحالي (Word)", data=create_word_file(last_response), file_name="Academic_Research.docx", key="static_chat_dl")
 
 # 2. الترجمة والمراجعة والمعاينة
 if up:
@@ -146,24 +142,29 @@ if up:
         st.subheader("🌍 ترجمة الملف بالكامل")
         t_lang = st.selectbox("اللغة المستهدفة للترجمة:", ["العربية", "English"], key="t_lang")
         if st.button(f"بدء ترجمة {p_count} صفحة"):
-            if deduct_attempt(p_count):
-                full_translation = ""
-                prog_placeholder = st.empty()
-                
-                # --- التعديل الاقتصادي لزيادة الربح: دمج 10 صفحات واستخدام gpt-4o-mini ---
-                for i in range(0, p_count, 10):
-                    batch_text = "\n".join([doc_v[j].get_text() for j in range(i, min(i+10, p_count))])
-                    if batch_text.strip():
-                        res = client.chat.completions.create(
-                            model="gpt-4o-mini", 
-                            messages=[{"role": "user", "content": f"Translate to {t_lang}: {batch_text}"}]
-                        )
-                        full_translation += res.choices[0].message.content + "\n\n"
-                    percent = int((min(i + 10, p_count) / p_count) * 100)
-                    prog_placeholder.progress(percent, text=f"جاري الترجمة...")
-                
-                st.session_state.translation_result = full_translation
-                prog_placeholder.success("✅ تمت الترجمة بنجاح!")
+            # معالجة فورية لمنع الضغط المتكرر
+            with st.spinner("🚀 جاري تحضير المحرك وبدء المعالجة... يرجى الانتظار"):
+                if deduct_attempt(p_count):
+                    full_translation = ""
+                    prog_placeholder = st.empty()
+                    
+                    # نظام الدمج الاقتصادي لزيادة الربح وتوفير OpenAI
+                    for i in range(0, p_count, 10):
+                        batch_text = "\n".join([doc_v[j].get_text() for j in range(i, min(i+10, p_count))])
+                        if batch_text.strip():
+                            res = client.chat.completions.create(
+                                model="gpt-4o-mini", 
+                                messages=[{"role": "user", "content": f"Translate to {t_lang}: {batch_text}"}]
+                            )
+                            full_translation += res.choices[0].message.content + "\n\n"
+                        
+                        percent = int((min(i + 10, p_count) / p_count) * 100)
+                        prog_placeholder.progress(percent, text=f"تمت ترجمة {min(i+10, p_count)} صفحة من أصل {p_count}")
+                    
+                    st.session_state.translation_result = full_translation
+                    prog_placeholder.success("✅ تمت الترجمة بنجاح!")
+                else:
+                    st.error("عذراً، رصيدك لا يكفي لترجمة هذا الملف.")
         
         if "translation_result" in st.session_state:
             st.download_button("📥 تحميل الملف المترجم", data=create_word_file(st.session_state.translation_result), file_name="Translated_Book.docx")
@@ -172,17 +173,18 @@ if up:
         st.subheader("🎓 مراجعة نقدية أكاديمية")
         review_lang = st.selectbox("اختر لغة النقد الأكاديمي:", ["العربية", "English"], key="rev_lang")
         if st.button("توليد تقرير المراجعة الشامل"):
-            if deduct_attempt(p_count):
-                prog_placeholder = st.empty()
-                full_review = ""
-                for i in range(0, p_count, 10):
-                    chunk = "\n".join([doc_v[j].get_text() for j in range(i, min(i+10, p_count))])
-                    res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": f"Provide an academic review in {review_lang} for: {chunk}"}])
-                    full_review += res.choices[0].message.content + "\n"
-                    percent = int(((i + 10) / p_count) * 100)
-                    prog_placeholder.progress(min(percent, 100), text=f"جاري التحليل النقدي...")
-                st.session_state.review_result = full_review
-                prog_placeholder.empty()
+            with st.spinner("🔍 جاري تحليل النص أكاديمياً..."):
+                if deduct_attempt(p_count):
+                    prog_placeholder = st.empty()
+                    full_review = ""
+                    for i in range(0, p_count, 10):
+                        chunk = "\n".join([doc_v[j].get_text() for j in range(i, min(i+10, p_count))])
+                        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": f"Provide an academic review in {review_lang} for: {chunk}"}])
+                        full_review += res.choices[0].message.content + "\n"
+                        percent = int(((i + 10) / p_count) * 100)
+                        prog_placeholder.progress(min(percent, 100), text=f"جاري التحليل النقدي...")
+                    st.session_state.review_result = full_review
+                    prog_placeholder.empty()
         
         if "review_result" in st.session_state:
             st.markdown(st.session_state.review_result)
@@ -195,8 +197,8 @@ if up:
         user_query = st.text_input("💬 ماذا تريد من البحث؟ (اسأل المستشار عن محتوى هذه الصفحة):")
         if st.button("إرسال السؤال"):
             if user_query:
-                if deduct_attempt(1):
-                    with st.spinner("جاري استخراج الإجابة..."):
+                with st.spinner("⌛ جاري استخراج الإجابة من الصفحة..."):
+                    if deduct_attempt(1):
                         page_content = doc_v[p_num-1].get_text()
                         res = client.chat.completions.create(
                             model="gpt-4o", 
@@ -206,7 +208,6 @@ if up:
                             ]
                         )
                         st.info(f"**إجابة المستشار:**\n\n{res.choices[0].message.content}")
-                else: st.error("رصيدك غير كافٍ لهذه العملية.")
         
         st.markdown("---")
         pix = doc_v[p_num-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
