@@ -42,7 +42,7 @@ def create_word_file(text):
     bio.seek(0)
     return bio
 
-# --- وظائف الحماية والخصم ---
+# --- وظائف الخصم والحماية ---
 def deduct_attempt(amount=1):
     df = pd.read_csv(DB_CODES)
     idx_list = df.index[df['code'] == st.session_state.code].tolist()
@@ -55,22 +55,22 @@ def deduct_attempt(amount=1):
             return True
     return False
 
-# --- تنسيق الألوان وبروتوكول الحماية (مع إبقاء القائمة الجانبية ظاهرة) ---
+# --- بروتوكول الحماية المطلقة وتنسيق الألوان الذكي (CSS) ---
 st.set_page_config(
     page_title="ScholarNode Academy", 
     layout="wide", 
-    initial_sidebar_state="expanded"  # تم التعديل لتكون القائمة ظاهرة دائماً
+    initial_sidebar_state="expanded"
 )
 
 st.markdown("""
 <style>
-/* إخفاء القوائم البرمجية فقط مع الحفاظ على القائمة الجانبية للمستخدم */
+/* إخفاء العناصر البرمجية لضمان الحماية المطلقة */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header {visibility: hidden;}
 .stDeployButton {display:none;}
 
-/* تنسيق النصوص لتكون واضحة في الوضع المظلم والعادي */
+/* تنسيق النصوص لتتبع ثيم الجهاز تلقائياً لضمان الوضوح */
 :root { --text-color: inherit; }
 
 .main-header { 
@@ -83,7 +83,6 @@ header {visibility: hidden;}
     margin-bottom: 25px; 
 }
 
-/* تنسيق الجداول */
 .price-table { width: 100%; border-collapse: collapse; margin: 10px 0; background: transparent; }
 .price-table th { background: #ef4444; color: white !important; padding: 12px; border: 1px solid #ddd; }
 .price-table td { border: 1px solid #ddd; padding: 10px; text-align: center; color: inherit !important; font-weight: bold; }
@@ -101,9 +100,9 @@ header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- القائمة الجانبية (Sidebar) - ستكون ظاهرة الآن ---
+# --- القائمة الجانبية (Sidebar) ---
 with st.sidebar:
-    st.markdown("### 🏦 معلومات الحساب والدفع")
+    st.markdown("### 🏦 معلومات الحساب والدعم")
     st.markdown(f"""
     <div class="payment-box">
         👤 <b>الاسم:</b> HAYDER Z. JASIM<br>
@@ -113,7 +112,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     
     if "auth" in st.session_state:
-        st.write(f"🎟️ **الكود المفعل:** {st.session_state.code}")
+        st.write(f"🎟️ **الكود المفعل:** `{st.session_state.code}`")
         if st.button("🔴 تسجيل الخروج"):
             st.session_state.clear()
             st.rerun()
@@ -141,15 +140,15 @@ with st.sidebar:
             df = pd.read_csv(DB_CODES)
             new_entry = pd.DataFrame([{"code": new_c, "credit": attempts, "remaining": attempts, "status": "Active"}])
             pd.concat([df, new_entry]).to_csv(DB_CODES, index=False)
-            st.success(f"الكود: {new_c}")
+            st.success(f"تم توليد الكود: {new_c}")
 
 # --- بوابة الدخول ---
 if "auth" not in st.session_state:
     st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 5, 1])
     with col2:
-        in_c = st.text_input("يرجى إدخال كود التفعيل:", type="password")
-        if st.button("تسجيل الدخول", use_container_width=True):
+        in_c = st.text_input("أدخل كود التفعيل للدخول:", type="password")
+        if st.button("دخول", use_container_width=True):
             df = pd.read_csv(DB_CODES)
             match = df[(df['code'] == in_c.strip()) & (df['status'] == 'Active')]
             if not match.empty:
@@ -159,12 +158,13 @@ if "auth" not in st.session_state:
             else: st.error("الكود غير صحيح")
     st.stop()
 
-# --- الواجهة الرئيسية ---
-st.markdown(f'<div class="main-header"><h1>مرحباً {st.session_state.user}</h1><h2>الرصيد: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
+# --- الواجهة الرئيسية بعد الدخول ---
+st.markdown(f'<div class="main-header"><h1>مرحباً بك في ScholarNode</h1><h2>الرصيد: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
 up = st.file_uploader("📂 ارفع ملف PDF للمراجعة أو الترجمة", type=["pdf"])
 
-tabs = st.tabs(["💬 المستشار", "🌍 الترجمة", "🎓 المراجعة", "📄 المعاينة"])
+tabs = st.tabs(["💬 المستشار الذكي", "🌍 الترجمة الأكاديمية", "🎓 المراجعة العلمية", "📄 معاينة الملف"])
 
+# 1. تبويب المستشار (يعمل دائماً)
 with tabs[0]:
     st.subheader("🎓 مستشار بناء الخطط والبحوث")
     if "chat_history" not in st.session_state: st.session_state.chat_history = []
@@ -180,13 +180,57 @@ with tabs[0]:
                 response = res.choices[0].message.content
                 st.markdown(response)
                 st.session_state.chat_history.append({"role": "assistant", "content": response})
-                st.download_button("📥 تحميل (Word)", data=create_word_file(response), file_name="output.docx")
+                st.download_button("📥 تحميل المخرج (Word)", data=create_word_file(response), file_name="output.docx")
         else: st.error("الرصيد غير كافٍ")
 
+# وظائف التبويبات الأخرى (تعمل عند رفع ملف)
 if up:
     up.seek(0)
     doc_v = fitz.open(stream=up.read(), filetype="pdf")
     st.session_state.total_pages = len(doc_v)
-    # باقي وظائف الترجمة والمراجعة والمعاينة كما هي في الكود السابق...
+    
+    with tabs[1]:
+        st.subheader("🌍 ترجمة الملف بالكامل")
+        t_lang = st.selectbox("اللغة المستهدفة:", ["العربية", "English"], key="t_lang")
+        if st.button(f"بدء ترجمة {st.session_state.total_pages} صفحة"):
+            if deduct_attempt(st.session_state.total_pages):
+                with st.spinner("جاري ترجمة كامل الملف..."):
+                    up.seek(0)
+                    all_text = "\n".join([p.get_text() for p in doc_v])
+                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate this fully to {t_lang}:\n{all_text}"}])
+                    st.success("✅ تمت الترجمة بنجاح!")
+                    st.download_button("📥 تحميل الملف المترجم", data=create_word_file(res.choices[0].message.content), file_name="translated.docx")
+            else: st.error("رصيدك لا يكفي لعدد الصفحات")
+
+    with tabs[2]:
+        st.subheader("🎓 مراجعة نقدية أكاديمية")
+        r_lang = st.selectbox("لغة التقرير:", ["العربية", "English"], key="r_lang")
+        if st.button("توليد تقرير المراجعة"):
+            if deduct_attempt(st.session_state.total_pages):
+                with st.spinner("جاري تحليل الملف نقدياً..."):
+                    up.seek(0)
+                    all_text = "\n".join([p.get_text() for p in doc_v])
+                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Provide a human-like academic review in {r_lang}: {all_text}"}])
+                    st.success("✅ تم توليد المراجعة!")
+                    st.download_button("📥 تحميل تقرير المراجعة", data=create_word_file(res.choices[0].message.content), file_name="review.docx")
+            else: st.error("الرصيد غير كافٍ")
+
+    with tabs[3]:
+        st.subheader("📄 معاينة ومناقشة الصفحات")
+        p_num = st.number_input("الصفحة رقم:", 1, len(doc_v), 1)
+        pix = doc_v[p_num-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
+        st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
+        
+        f_prompt = st.text_input("اسأل المستشار عن محتوى هذه الصفحة:")
+        if st.button("إرسال") and f_prompt:
+            if deduct_attempt(1):
+                context = doc_v[p_num-1].get_text()
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": f"Context: {context}"}, {"role": "user", "content": f_prompt}])
+                st.info(f"**المستشار:** {res.choices[0].message.content}")
+            else: st.error("الرصيد غير كافٍ")
+else:
+    with tabs[1]: st.info("يرجى رفع ملف PDF لتفعيل خيار الترجمة.")
+    with tabs[2]: st.info("يرجى رفع ملف PDF لتفعيل خيار المراجعة الأكاديمية.")
+    with tabs[3]: st.info("يرجى رفع ملف PDF لتتمكن من معاينته ومناقشته.")
 
 st.markdown("<br><hr><p style='text-align:center;'>ScholarNode Academy © 2026</p>", unsafe_allow_html=True)
