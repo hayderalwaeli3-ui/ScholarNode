@@ -5,22 +5,26 @@ import io
 import uuid
 import random
 import string
-from datetime import datetime
+from datetime import datetime, timedelta
 from PIL import Image
 import fitz  # PyMuPDF
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt
 from openai import OpenAI
+import time
 
-# --- [بروتوكول الحماية المطلقة] ---
+# --- [بروتوكول الحماية المطلقة: إعدادات النظام والمفاتيح] ---
 API_KEY = st.secrets["OPENAI_API_KEY"]
 client = OpenAI(api_key=API_KEY)
 DB_CODES = "scholar_main_db.csv"
+DB_SECURITY = "device_tracking.csv"
 
 def init_db():
     if not os.path.exists(DB_CODES):
-        pd.DataFrame(columns=["code", "credit", "remaining", "status"]).to_csv(DB_CODES, index=False)
+        pd.DataFrame(columns=["code", "credit", "remaining", "status", "activation_date", "expiry_date"]).to_csv(DB_CODES, index=False)
+    if not os.path.exists(DB_SECURITY):
+        pd.DataFrame(columns=["device_id", "free_used", "is_blocked"]).to_csv(DB_SECURITY, index=False)
 
 init_db()
 
@@ -36,6 +40,9 @@ def create_word_file(text):
     bio.seek(0)
     return bio
 
+def get_device_id():
+    return str(uuid.getnode())
+
 def deduct_attempt(amount=1):
     df = pd.read_csv(DB_CODES)
     idx_list = df.index[df['code'] == st.session_state.code].tolist()
@@ -48,55 +55,61 @@ def deduct_attempt(amount=1):
             return True
     return False
 
-# --- [تعديل التنسيق للهاتف مع الحفاظ على الهيكل] ---
+# --- [تنسيق الهاتف والحماية البصرية المتقدمة] ---
 st.set_page_config(page_title="ScholarNode Academy", layout="wide")
 st.markdown("""
 <style>
-    /* الحفاظ على الألوان الأصلية */
+    /* الحماية البصرية والألوان */
     .stApp { background-color: #ffffff !important; }
     .main-header { 
         background: #1e3a8a; color: #ffffff !important; padding: 25px; 
-        text-align: center; border-radius: 15px; border: 4px solid #facc15; margin-bottom: 20px; 
+        text-align: center; border-radius: 15px; border: 5px solid #facc15; margin-bottom: 25px; 
     }
-    
-    /* ضمان تأقلم العناصر مع الهاتف */
-    [data-testid="stSidebar"] { width: auto !important; }
-    .stTabs [data-baseweb="tab-list"] { flex-wrap: wrap !important; }
-    
-    @media (max-width: 640px) {
-        .main-header h1 { font-size: 20px !important; }
-        .stButton button { width: 100% !important; }
-        div[data-testid="column"] { width: 100% !important; flex: 1 1 100% !important; }
-    }
-    
     h1, h2, h3, p, span, label { color: #000000 !important; font-weight: bold !important; }
+    
+    /* جعل العناصر تتأقلم مع الهاتف (Responsive Design) */
+    @media (max-width: 768px) {
+        .main-header h1 { font-size: 22px !important; }
+        .main-header h2 { font-size: 16px !important; }
+        div[data-testid="column"] { width: 100% !important; flex: 1 1 100% !important; }
+        .stButton button { width: 100% !important; }
+        .price-table { font-size: 12px !important; }
+    }
+
     .price-table { width: 100%; border-collapse: collapse; background: #ffffff; border: 2px solid #ef4444; }
     .price-table th { background: #ef4444; color: white !important; padding: 8px; }
     .price-table td { border: 1px solid #ef4444; padding: 6px; text-align: center; color: #000000 !important; }
-    .payment-box { background: #1e3a8a; color: white !important; padding: 15px; border-radius: 10px; border: 2px solid #facc15; }
+    .payment-box { background: #1e3a8a; color: white !important; padding: 15px; border-radius: 10px; border: 3px solid #facc15; }
+    .finance-info { background: #fffbe6; color: #856404; padding: 15px; border-radius: 8px; border-right: 5px solid #facc15; margin-bottom: 20px; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- القائمة الجانبية (الأصلية) ---
+# --- القائمة الجانبية (الأصلية مع حماية الأدمن) ---
 with st.sidebar:
     if "auth" in st.session_state:
-        st.write(f"🎫 الكود: `{st.session_state.code}`")
-        if st.button("🔴 خروج"):
+        if st.button("🔴 تسجيل الخروج"):
             st.session_state.clear()
             st.rerun()
+        if "total_pages" in st.session_state:
+            total_iqd = int((st.session_state.total_pages * 300) * 1.08)
+            st.markdown(f'<div class="finance-info">📊 كلفة الملف: {total_iqd} دينار</div>', unsafe_allow_html=True)
+    
     st.markdown('<div class="payment-box"><b>🏦 ماستر كارد الرافدين:</b><br>8369719342<br>👤 HAYDER Z. JASIM</div>', unsafe_allow_html=True)
-    st.markdown("### 🏷️ فئات الشحن")
-    st.markdown("""<table class="price-table"><tr><th>الفئة</th><th>رصيد</th></tr><tr><td>10k</td><td>66</td></tr><tr><td>20k</td><td>133</td></tr><tr><td>50k</td><td>333</td></tr><tr><td>100k</td><td>666</td></tr></table>""", unsafe_allow_html=True)
+    
+    st.markdown("### 🏷️ جدول الكروت")
+    st.markdown("""<table class="price-table"><tr><th>الفئة</th><th>محاولات</th></tr><tr><td>10k</td><td>66</td></tr><tr><td>20k</td><td>133</td></tr><tr><td>30k</td><td>200</td></tr><tr><td>40k</td><td>266</td></tr><tr><td>50k</td><td>333</td></tr><tr><td>100k</td><td>666</td></tr></table>""", unsafe_allow_html=True)
+
     st.write("---")
-    adm = st.text_input("Admin:", type="password")
+    adm = st.text_input("لوحة التحكم (Admin):", type="password")
     if adm == "HAYDER_2026":
         cat = st.selectbox("الفئة:", [10, 20, 30, 40, 50, 100])
-        if st.button("توليد"):
+        if st.button("توليد الكود"):
             new_c = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
-            att = {10: 66, 20: 133, 30: 200, 40: 266, 50: 333, 100: 666}[cat]
+            attempts = {10: 66, 20: 133, 30: 200, 40: 266, 50: 333, 100: 666}[cat]
             df = pd.read_csv(DB_CODES)
-            pd.concat([df, pd.DataFrame([{"code": new_c, "credit": att, "remaining": att, "status": "Active"}])]).to_csv(DB_CODES, index=False)
-            st.success(f"كود جديد: {new_c}")
+            new_entry = pd.DataFrame([{"code": new_c, "credit": attempts, "remaining": attempts, "status": "Active", "activation_date": "None", "expiry_date": "None"}])
+            pd.concat([df, new_entry]).to_csv(DB_CODES, index=False)
+            st.success(f"الكود: {new_c}")
 
 # --- بوابة الدخول ---
 if "auth" not in st.session_state:
@@ -104,33 +117,75 @@ if "auth" not in st.session_state:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         in_c = st.text_input("كود التفعيل:", type="password")
-        if st.button("دخول", use_container_width=True):
+        if st.button("دخول للمنصة", use_container_width=True):
             df = pd.read_csv(DB_CODES)
-            if not df[df['code'] == in_c.strip()].empty:
-                idx = df[df['code'] == in_c.strip()].index[0]
-                st.session_state.update({"auth": True, "credit": df.at[idx, 'remaining'], "code": in_c.strip()})
+            match = df[(df['code'] == in_c.strip()) & (df['status'] == 'Active')]
+            if not match.empty:
+                idx = match.index[0]
+                st.session_state.update({"auth": True, "user": "باحث مشترك", "credit": df.at[idx, 'remaining'], "code": in_c.strip()})
                 st.rerun()
-            else: st.error("خطأ في الكود")
+            else: st.error("الكود غير صحيح")
     st.stop()
 
-# --- الواجهة الرئيسية ---
-st.markdown(f'<div class="main-header"><h1>ScholarNode Academy</h1><h2>الرصيد: {st.session_state.credit}</h2></div>', unsafe_allow_html=True)
+# --- الواجهة الرئيسية (المتجاوبة) ---
+st.markdown(f'<div class="main-header"><h1>مرحباً {st.session_state.user}</h1><h2>الرصيد: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
 up = st.file_uploader("📂 ارفع ملف PDF", type=["pdf"])
 
 tabs = st.tabs(["💬 المستشار", "🌍 الترجمة", "🎓 المراجعة", "📄 المعاينة"])
 
-# (هنا يتم الحفاظ على كافة الوظائف الأصلية للمستشار والترجمة والمراجعة والمعاينة)
-# تم تطبيق نظام التنسيق لضمان ظهور الصور والأزرار بشكل سليم على الهاتف.
-
-with tabs[0]: # المستشار الأكاديمي
+with tabs[0]: # المستشار
+    st.subheader("🎓 مستشار بناء الخطط الأكاديمية")
     if "chat_history" not in st.session_state: st.session_state.chat_history = []
-    for msg in st.session_state.chat_history:
-        with st.chat_message(msg["role"]): st.markdown(msg["content"])
-    prompt = st.chat_input("اطلب خطة بحثية...")
-    if prompt and deduct_attempt(1):
-        st.session_state.chat_history.append({"role": "user", "content": prompt})
-        res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": "بروفيسور أكاديمي خبير."}] + st.session_state.chat_history)
-        st.session_state.chat_history.append({"role": "assistant", "content": res.choices[0].message.content})
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]): st.markdown(message["content"])
+    c_prompt = st.chat_input("اطلب بناء خطة بحثية...")
+    if c_prompt and deduct_attempt(1):
+        st.session_state.chat_history.append({"role": "user", "content": c_prompt})
+        res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": "أنت خبير أكاديمي."}] + st.session_state.chat_history)
+        ans = res.choices[0].message.content
+        st.session_state.chat_history.append({"role": "assistant", "content": ans})
         st.rerun()
 
-# (باقي الأقسام تعمل بنفس المنطق الأصلي الصارم)
+if up:
+    up.seek(0)
+    doc_v = fitz.open(stream=up.read(), filetype="pdf")
+    st.session_state.total_pages = len(doc_v)
+    
+    with tabs[1]: # الترجمة
+        st.subheader("🌍 الترجمة الكاملة")
+        t_lang = st.selectbox("إلى:", ["العربية", "English"])
+        if st.button(f"بدء المعالجة لـ {st.session_state.total_pages} صفحة"):
+            if deduct_attempt(st.session_state.total_pages):
+                up.seek(0)
+                all_text = "\n".join([p.get_text() for p in doc_v])
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate to {t_lang}:\n{all_text}"}])
+                st.success("✅ تم!")
+                st.download_button("📥 تحميل Word", data=create_word_file(res.choices[0].message.content), file_name="translated.docx")
+
+    with tabs[2]: # المراجعة
+        st.subheader("🎓 مراجعة بشخصية مراجع بشري")
+        r_lang = st.selectbox("اللغة:", ["العربية", "English"])
+        if st.button("توليد المراجعة"):
+            if deduct_attempt(st.session_state.total_pages):
+                up.seek(0)
+                all_text = "\n".join([p.get_text() for p in doc_v])
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"راجع هذا النص نقدياً وحافظ على العناوين الأصلية باللغة {r_lang}: {all_text}"}])
+                st.success("✅ تم!")
+                st.download_button("📥 تحميل المراجعة", data=create_word_file(res.choices[0].message.content), file_name="review.docx")
+
+    with tabs[3]: # المعاينة
+        st.subheader("📄 المعاينة والمناقشة")
+        # استخدام نظام الأعمدة المتجاوبة للموبايل
+        c_view, c_chat = st.columns([1, 1])
+        with c_view:
+            p_num = st.number_input("الصفحة:", 1, len(doc_v), 1)
+            pix = doc_v[p_num-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
+            st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
+        with c_chat:
+            f_q = st.text_input("اسأل عن الصفحة:")
+            if st.button("إرسال") and f_q:
+                if deduct_attempt(1):
+                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"أجب بناء على نص الصفحة: {doc_v[p_num-1].get_text()}\nالسؤال: {f_q}"}])
+                    st.info(res.choices[0].message.content)
+
+st.markdown("<br><hr><p style='text-align:center;'>ScholarNode Academy © 2026</p>", unsafe_allow_html=True)
