@@ -74,12 +74,13 @@ with st.sidebar:
         st.success("تم الدخول كمسؤول")
         cat = st.selectbox("توليد فئة:", [10, 20, 30, 40, 50, 100])
         if st.button("توليد كود الاشتراك"):
-            new_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+            generated_token = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
             attempts = {10: 66, 20: 133, 30: 200, 40: 266, 50: 333, 100: 666}[cat]
             df = pd.read_csv(DB_CODES)
-            new_entry = pd.DataFrame([{"code": new_code, "credit": attempts, "remaining": attempts, "status": "Active", "activation_date": "None", "expiry_date": "None"}])
+            new_entry = pd.DataFrame([{"code": generated_token, "credit": attempts, "remaining": attempts, "status": "Active", "activation_date": "None", "expiry_date": "None"}])
             pd.concat([df, new_entry]).to_csv(DB_CODES, index=False)
-            st.code(f"الكود: {new_code}")
+            # تم حذف كلمة "الكود" ليظهر الرمز فقط كما طلبت
+            st.code(generated_token)
 
 # --- بوابة الدخول ---
 if "auth" not in st.session_state:
@@ -102,4 +103,4 @@ if "auth" not in st.session_state:
 st.markdown(f'<div class="main-header"><h1>مرحباً دكتور</h1><h2>الرصيد: {st.session_state.credit}</h2></div>', unsafe_allow_html=True)
 up = st.file_uploader("📂 ارفع ملف PDF", type=["pdf"])
 if up:
-    st.success("تم رفع الملف بنجاح") # تم تصحيح الخطأ هنا
+    st.success("تم رفع الملف بنجاح")
