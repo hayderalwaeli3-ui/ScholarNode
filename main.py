@@ -55,6 +55,15 @@ def deduct_attempt(amount=1):
             return True
     return False
 
+# --- وظيفة شريط النسبة المئوية للانجاز (تعديل رقم 3) ---
+def run_progress_with_percent(text="جاري المعالجة..."):
+    placeholder = st.empty()
+    for p in range(1, 101):
+        time.sleep(0.01)
+        placeholder.progress(p, text=f"{text} {p}%")
+    time.sleep(0.5)
+    placeholder.empty()
+
 # --- بروتوكول الحماية المطلقة وتنسيق الألوان الذكي (CSS) ---
 st.set_page_config(
     page_title="ScholarNode Academy", 
@@ -107,9 +116,9 @@ with st.sidebar:
     <div class="payment-box">
         👤 <b>الاسم:</b> HAYDER Z. JASIM<br>
         💳 <b>ماستر كارد الرافدين:</b><br> 8369719342<br>
-        📞 <b>رقم الهاتف (تفعيل):</b><br> 07715632230
+        📞 <b>رقم الهاتف (تفعيل):</b><br> 07879973495
     </div>
-    """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True) # تم تعديل الرقم (تعديل رقم 1)
     
     if "auth" in st.session_state:
         st.write(f"🎟️ **الكود المفعل:** `{st.session_state.code}`")
@@ -152,8 +161,7 @@ if "auth" not in st.session_state:
             df = pd.read_csv(DB_CODES)
             match = df[(df['code'] == in_c.strip()) & (df['status'] == 'Active')]
             if not match.empty:
-                idx = match.index[0]
-                st.session_state.update({"auth": True, "user": "باحث مشترك", "credit": df.at[idx, 'remaining'], "code": in_c.strip()})
+                st.session_state.update({"auth": True, "user": "باحث مشترك", "credit": df.at[match.index[0], 'remaining'], "code": in_c.strip()})
                 st.rerun()
             else: st.error("الكود غير صحيح")
     st.stop()
@@ -164,7 +172,7 @@ up = st.file_uploader("📂 ارفع ملف PDF للمراجعة أو الترج
 
 tabs = st.tabs(["💬 المستشار الذكي", "🌍 الترجمة الأكاديمية", "🎓 المراجعة العلمية", "📄 معاينة الملف"])
 
-# 1. تبويب المستشار (يعمل دائماً)
+# 1. تبويب المستشار
 with tabs[0]:
     st.subheader("🎓 مستشار بناء الخطط والبحوث")
     if "chat_history" not in st.session_state: st.session_state.chat_history = []
@@ -173,6 +181,7 @@ with tabs[0]:
     c_prompt = st.chat_input("اطلب بناء خطة بحثية...")
     if c_prompt:
         if deduct_attempt(1):
+            run_progress_with_percent("جاري إعداد الرد...") # إضافة الشريط
             with st.chat_message("user"): st.markdown(c_prompt)
             st.session_state.chat_history.append({"role": "user", "content": c_prompt})
             with st.chat_message("assistant"):
@@ -180,10 +189,10 @@ with tabs[0]:
                 response = res.choices[0].message.content
                 st.markdown(response)
                 st.session_state.chat_history.append({"role": "assistant", "content": response})
-                st.download_button("📥 تحميل المخرج (Word)", data=create_word_file(response), file_name="output.docx")
+                st.download_button("📥 تحميل المخرج (Word)", data=create_word_file(response), file_name="output.docx", key=f"dl_{uuid.uuid4()}")
         else: st.error("الرصيد غير كافٍ")
 
-# وظائف التبويبات الأخرى (تعمل عند رفع ملف)
+# وظائف التبويبات الأخرى
 if up:
     up.seek(0)
     doc_v = fitz.open(stream=up.read(), filetype="pdf")
@@ -194,12 +203,12 @@ if up:
         t_lang = st.selectbox("اللغة المستهدفة:", ["العربية", "English"], key="t_lang")
         if st.button(f"بدء ترجمة {st.session_state.total_pages} صفحة"):
             if deduct_attempt(st.session_state.total_pages):
-                with st.spinner("جاري ترجمة كامل الملف..."):
-                    up.seek(0)
-                    all_text = "\n".join([p.get_text() for p in doc_v])
-                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate this fully to {t_lang}:\n{all_text}"}])
-                    st.success("✅ تمت الترجمة بنجاح!")
-                    st.download_button("📥 تحميل الملف المترجم", data=create_word_file(res.choices[0].message.content), file_name="translated.docx")
+                run_progress_with_percent("جاري ترجمة كامل الملف...") # إضافة الشريط
+                up.seek(0)
+                all_text = "\n".join([p.get_text() for p in doc_v])
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate this fully to {t_lang}:\n{all_text}"}])
+                st.success("✅ تمت الترجمة بنجاح!")
+                st.download_button("📥 تحميل الملف المترجم", data=create_word_file(res.choices[0].message.content), file_name="translated.docx")
             else: st.error("رصيدك لا يكفي لعدد الصفحات")
 
     with tabs[2]:
@@ -207,27 +216,34 @@ if up:
         r_lang = st.selectbox("لغة التقرير:", ["العربية", "English"], key="r_lang")
         if st.button("توليد تقرير المراجعة"):
             if deduct_attempt(st.session_state.total_pages):
-                with st.spinner("جاري تحليل الملف نقدياً..."):
-                    up.seek(0)
-                    all_text = "\n".join([p.get_text() for p in doc_v])
-                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Provide a human-like academic review in {r_lang}: {all_text}"}])
-                    st.success("✅ تم توليد المراجعة!")
-                    st.download_button("📥 تحميل تقرير المراجعة", data=create_word_file(res.choices[0].message.content), file_name="review.docx")
+                run_progress_with_percent("جاري تحليل الملف نقدياً...") # إضافة الشريط
+                up.seek(0)
+                all_text = "\n".join([p.get_text() for p in doc_v])
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Provide a human-like academic review in {r_lang}: {all_text}"}])
+                st.success("✅ تم توليد المراجعة!")
+                st.download_button("📥 تحميل تقرير المراجعة", data=create_word_file(res.choices[0].message.content), file_name="review.docx")
             else: st.error("الرصيد غير كافٍ")
 
     with tabs[3]:
         st.subheader("📄 معاينة ومناقشة الصفحات")
+        # تعديل رقم 2: رفع مربع الحوار للأعلى
         p_num = st.number_input("الصفحة رقم:", 1, len(doc_v), 1)
-        pix = doc_v[p_num-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
-        st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
-        
         f_prompt = st.text_input("اسأل المستشار عن محتوى هذه الصفحة:")
         if st.button("إرسال") and f_prompt:
             if deduct_attempt(1):
+                run_progress_sync_simple = st.progress(0, text="جاري استخراج الإجابة...")
+                for i in range(100):
+                    time.sleep(0.005)
+                    run_progress_sync_simple.progress(i + 1)
                 context = doc_v[p_num-1].get_text()
                 res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": f"Context: {context}"}, {"role": "user", "content": f_prompt}])
                 st.info(f"**المستشار:** {res.choices[0].message.content}")
+                run_progress_sync_simple.empty()
             else: st.error("الرصيد غير كافٍ")
+        
+        # وضع الصورة في الأسفل بعد مربع الحوار
+        pix = doc_v[p_num-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
+        st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
 else:
     with tabs[1]: st.info("يرجى رفع ملف PDF لتفعيل خيار الترجمة.")
     with tabs[2]: st.info("يرجى رفع ملف PDF لتفعيل خيار المراجعة الأكاديمية.")
