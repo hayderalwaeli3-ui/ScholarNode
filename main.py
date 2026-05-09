@@ -48,13 +48,13 @@ def deduct_attempt(amount):
             return True
     return False
 
-# تعديل شريط الإنجاز ليكون متزامناً مع ظهور ملف الوورد
+# وظيفة شريط الإنجاز المتزامن (بروتوكول كود 2)
 def run_progress_sync():
-    progress_text = "جاري التحليل الأكاديمي العميق..."
+    progress_text = "جاري التحليل الأكاديمي العميق... يرجى الانتظار"
     my_bar = st.progress(0, text=progress_text)
-    # التقدم السريع حتى 95%
+    # التقدم حتى 95% والبقاء بانتظار الملف
     for percent_complete in range(95):
-        time.sleep(0.02)
+        time.sleep(0.01)
         my_bar.progress(percent_complete + 1, text=progress_text)
     return my_bar
 
@@ -72,15 +72,34 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- القائمة الجانبية ---
+# --- القائمة الجانبية (Sidebar) المعلومات الثابتة ---
 with st.sidebar:
     st.markdown("### 🏦 معلومات الحساب والدعم")
-    st.markdown(f"""<div class="payment-box">👤 <b>الاسم:</b> HAYDER Z. JASIM<br>💳 <b>ماستر كارد الرافدين:</b><br> 8369719342<br>📞 <b>الدعم والتفعيل:</b> 07879974395</div>""", unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="payment-box">
+        👤 <b>الاسم:</b> HAYDER Z. JASIM<br>
+        💳 <b>ماستر كارد الرافدين:</b><br> 8369719342<br>
+        📞 <b>الدعم والتفعيل:</b> 07879974395
+    </div>
+    """, unsafe_allow_html=True)
+    
     if "auth" in st.session_state:
         st.write(f"🎟️ **الكود:** `{st.session_state.code}`")
-        if st.button("🔴 تسجيل الخروج"): st.session_state.clear(); st.rerun()
+        if st.button("🔴 تسجيل الخروج"):
+            st.session_state.clear(); st.rerun()
+
     st.markdown("### 🏷️ جدول فئات الكروت")
-    st.markdown("""<table class="price-table"><tr><th>الفئة (دينار)</th><th>محاولات</th></tr><tr><td>10,000</td><td>66</td></tr><tr><td>20,000</td><td>133</td></tr><tr><td>30,000</td><td>200</td></tr><tr><td>40,000</td><td>266</td></tr><tr><td>50,000</td><td>333</td></tr><tr><td>100,000</td><td>666</td></tr></table>""", unsafe_allow_html=True)
+    st.markdown("""
+    <table class="price-table">
+        <tr><th>الفئة (دينار)</th><th>محاولات</th></tr>
+        <tr><td>10,000</td><td>66</td></tr>
+        <tr><td>20,000</td><td>133</td></tr>
+        <tr><td>30,000</td><td>200</td></tr>
+        <tr><td>40,000</td><td>266</td></tr>
+        <tr><td>50,000</td><td>333</td></tr>
+        <tr><td>100,000</td><td>666</td></tr>
+    </table>
+    """, unsafe_allow_html=True)
 
 # --- بوابة الدخول ---
 if "auth" not in st.session_state:
@@ -90,7 +109,8 @@ if "auth" not in st.session_state:
         in_c = st.text_input("أدخل كود التفعيل:", type="password")
         if st.button("دخول النظام"):
             if os.path.exists(DB_CODES):
-                df = pd.read_csv(DB_CODES); match = df[(df['code'] == in_c.strip()) & (df['status'] == 'Active')]
+                df = pd.read_csv(DB_CODES)
+                match = df[(df['code'] == in_c.strip()) & (df['status'] == 'Active')]
                 if not match.empty:
                     idx = match.index[0]
                     st.session_state.update({"auth": True, "user": "باحث مشترك", "credit": df.at[idx, 'remaining'], "code": in_c.strip()})
@@ -110,18 +130,21 @@ with tabs[0]:
     if "chat_history" not in st.session_state: st.session_state.chat_history = []
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]): st.markdown(msg["content"])
+    
     c_prompt = st.chat_input("اطلب موضوع البحث أو المقالة هنا...")
     if c_prompt:
         cost = 10 if any(w in c_prompt for w in ["بحث", "دراسة", "مقالة"]) else 1
         if st.button(f"تأكيد وخصم {cost} محاولة"):
             if deduct_attempt(cost):
                 m_bar = run_progress_sync()
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": "أنت بروفيسور أكاديمي. اكتب بحوثاً تفصيلية جداً مع دمج مصادر أجنبية داخل الفقرات."}] + st.session_state.chat_history + [{"role": "user", "content": c_prompt}])
+                sys_msg = "أنت بروفيسور أكاديمي محترف. اكتب بحوثاً تفصيلية جداً مع دمج مصادر أجنبية داخل الفقرات وفي النهاية باللغة العربية حصراً."
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": sys_msg}] + st.session_state.chat_history + [{"role": "user", "content": c_prompt}])
                 answer = res.choices[0].message.content
                 m_bar.progress(100, text="اكتملت المعالجة!")
                 st.markdown(answer)
+                st.session_state.chat_history.append({"role": "user", "content": c_prompt})
                 st.session_state.chat_history.append({"role": "assistant", "content": answer})
-                st.download_button("📥 تحميل المخرج (Word)", data=create_word_file(answer), file_name="research_output.docx")
+                st.download_button("📥 تحميل المخرج (Word)", data=create_word_file(answer), file_name="scholar_research.docx")
                 time.sleep(1); m_bar.empty()
 
 if up:
@@ -141,14 +164,13 @@ if up:
                 time.sleep(1); m_bar.empty()
 
     with tabs[2]:
-        st.subheader("🎓 مراجعة نقدية (مطولة موازية لحجم الملف)")
+        st.subheader("🎓 مراجعة نقدية (موازية لحجم الملف)")
         r_lang = st.selectbox("لغة التقرير المطلوبة:", ["العربية", "English"], key="r_lang")
         if st.button("توليد تقرير المراجعة"):
             if deduct_attempt(att_req):
                 m_bar = run_progress_sync()
                 all_text = "\n".join([p.get_text() for p in doc_v])
-                # تعليمات المراجعة المطولة الموازية
-                sys_rev = f"You are an academic reviewer. Write a CRITICAL and EXTENSIVE review strictly in {r_lang}. The length of your review MUST match the volume of the original text ({p_count} pages). provide detailed analysis for every section."
+                sys_rev = f"You are an academic reviewer. Write a CRITICAL and EXTENSIVE review strictly in {r_lang}. The length of your review MUST match the volume of the original text ({p_count} pages). provide detailed analysis and maintain headings."
                 res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": sys_rev}, {"role": "user", "content": all_text}])
                 answer = res.choices[0].message.content
                 m_bar.progress(100, text="اكتمل التقرير!")
@@ -171,4 +193,4 @@ if up:
         pix = doc_v[p_idx-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
         st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
 
-st.markdown("<br><hr><p style='text-align:center;'>ScholarNode Academy © 2026</p>", unsafe_allow_html=True)
+st.markdown("<br><hr><p style='text-align:center;'>ScholarNode Academy © 2026 | النسخة المحمية (2)</p>", unsafe_allow_html=True)
