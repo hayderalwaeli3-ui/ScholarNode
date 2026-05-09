@@ -179,22 +179,46 @@ up = st.file_uploader("📂 ارفع ملف PDF للمراجعة أو الترج
 
 tabs = st.tabs(["💬 المستشار الذكي", "🌍 الترجمة الأكاديمية", "🎓 المراجعة العلمية", "📄 معاينة الملف"])
 
-# 1. تبويب المستشار الذكي
+# 1. تبويب المستشار الذكي (مع إضافة ميزة تحميل الخطة كملف وورد)
 with tabs[0]:
     st.subheader("🎓 مستشار بناء الخطط والبحوث")
-    if "chat_history" not in st.session_state: st.session_state.chat_history = []
-    for message in st.session_state.chat_history:
-        with st.chat_message(message["role"]): st.markdown(message["content"])
+    if "chat_history" not in st.session_state: 
+        st.session_state.chat_history = []
     
+    # عرض التاريخ
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]): 
+            st.markdown(message["content"])
+    
+    # إدخال السؤال
     c_prompt = st.chat_input("اطلب بناء خطة بحثية أو مقال رصين...")
+    
     if c_prompt:
         if deduct_attempt(1):
-            res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": "أنت خبير أكاديمي محترف."}] + st.session_state.chat_history + [{"role": "user", "content": c_prompt}])
-            response = res.choices[0].message.content
-            st.session_state.chat_history.append({"role": "user", "content": c_prompt})
-            st.session_state.chat_history.append({"role": "assistant", "content": response})
-            st.rerun()
+            with st.spinner("✍️ جاري صياغة الخطة الأكاديمية..."):
+                res = client.chat.completions.create(
+                    model="gpt-4o", 
+                    messages=[{"role": "system", "content": "أنت خبير أكاديمي محترف في كتابة الخطط البحثية والمقالات."}] + st.session_state.chat_history + [{"role": "user", "content": c_prompt}]
+                )
+                response = res.choices[0].message.content
+                st.session_state.chat_history.append({"role": "user", "content": c_prompt})
+                st.session_state.chat_history.append({"role": "assistant", "content": response})
+                # حفظ آخر إجابة لتوليد ملف الوورد
+                st.session_state.last_plan = response
+                st.rerun()
 
+    # --- إضافة زر تحميل الملف هنا ---
+    if "last_plan" in st.session_state:
+        st.markdown("---")
+        st.success("✅ الخطة جاهزة للتحميل")
+        # استخدام دالة create_word_file الموجودة مسبقاً في كودك رقم 11
+        word_file = create_word_file(st.session_state.last_plan)
+        st.download_button(
+            label="📥 تحميل الخطة كملف Word",
+            data=word_file,
+            file_name=f"Research_Plan_{datetime.now().strftime('%Y%m%d')}.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
 # 2. الترجمة والمراجعة والمعاينة (بنفس الخوارزميات الاقتصادية)
 if up:
     up.seek(0); doc_v = fitz.open(stream=up.read(), filetype="pdf"); p_count = len(doc_v)
