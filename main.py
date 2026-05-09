@@ -219,32 +219,27 @@ with tabs[0]:
             file_name=f"Research_Plan_{datetime.now().strftime('%Y%m%d')}.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
-with tabs[1]:
+# 2. تبويب الترجمة (المطور والاقتصادي)
+    with tabs[1]:
         st.subheader("🌍 مترجم ScholarNode الشامل (ترجمة احترافية)")
         t_lang = st.selectbox("اللغة المستهدفة للترجمة:", ["العربية", "English"], key="t_lang_new")
         
         if st.button(f"🚀 بدء ترجمة {p_count} صفحة"):
-            # التأكد من الرصيد أولاً
             if st.session_state.credit >= p_count:
                 with st.spinner("جاري الترجمة الشاملة..."):
                     if deduct_attempt(p_count):
                         full_translation = ""
                         prog_bar = st.progress(0)
-                        
                         for i in range(p_count):
                             page_text = doc_v[i].get_text()
                             if page_text.strip():
-                                # استخدام mini لتوفير المال
                                 res = client.chat.completions.create(
                                     model="gpt-4o-mini",
                                     messages=[{"role": "system", "content": f"Translate to {t_lang}"}, 
                                               {"role": "user", "content": page_text}]
                                 )
                                 full_translation += f"\n--- صفحة {i+1} ---\n" + res.choices[0].message.content + "\n"
-                            
-                            # تحديث التقدم صفحة بصفحة
                             prog_bar.progress((i + 1) / p_count)
-                        
                         st.session_state.translation_result = full_translation
                         st.success("✅ اكتملت الترجمة!")
             else:
@@ -257,6 +252,7 @@ with tabs[1]:
                 file_name="ScholarNode_Translated.docx"
             )
 
+    # 3. تبويب المراجعة النقدية (المحاذي برمجياً بشكل صحيح)
     with tabs[2]:
         st.subheader("🎓 مراجعة نقدية أكاديمية")
         review_lang = st.selectbox("اختر لغة النقد الأكاديمي:", ["العربية", "English"], key="rev_lang")
@@ -269,16 +265,14 @@ with tabs[1]:
                         chunk = "\n".join([doc_v[j].get_text() for j in range(i, min(i+10, p_count))])
                         res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": f"Provide an academic review in {review_lang} for: {chunk}"}])
                         full_review += res.choices[0].message.content + "\n"
-                        percent = int(((i + 10) / p_count) * 100)
-                        prog_placeholder.progress(min(percent, 100), text=f"جاري التحليل النقدي...")
+                        percent = int((min(i + 10, p_count) / p_count) * 100)
+                        prog_placeholder.progress(percent, text=f"جاري التحليل النقدي...")
                     st.session_state.review_result = full_review
                     prog_placeholder.empty()
         
         if "review_result" in st.session_state:
             st.markdown(st.session_state.review_result)
             st.download_button("📥 تحميل تقرير المراجعة", data=create_word_file(st.session_state.review_result), file_name="Academic_Review.docx")
-
-    with tabs[3]:
         st.subheader("📄 معاينة ومناقشة الملف")
         p_num = st.number_input("عرض الصفحة رقم:", 1, p_count, 1)
         st.markdown("---")
