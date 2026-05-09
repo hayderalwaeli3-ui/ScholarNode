@@ -89,7 +89,7 @@ with st.sidebar:
         st.markdown("---")
         st.markdown("### ⚙️ الإدارة")
         # ملاحظة: يمكنك تغيير ADMIN123 إلى كودك الخاص للدخول
-        if st.session_state.code == "ADMIN123":
+        if st.session_state.code == "HAYDER_2026":
             if st.button("🛠️ لوحة التحكم في الكروت"):
                 st.session_state.admin_view = not st.session_state.get('admin_view', False)
         
