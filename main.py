@@ -118,39 +118,67 @@ if "auth" not in st.session_state:
 
 # --- الواجهة الرئيسية ---
 st.markdown(f'<div class="main-header"><h1>مرحباً {st.session_state.user}</h1><h2>الرصيد: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
-up = st.file_uploader("📂 ارفع ملف PDF", type=["pdf"])
+up = st.file_uploader("📂 ارفع ملف PDF لغرض المراجعة أو الترجمة", type=["pdf"])
 
+tabs = st.tabs(["💬 المستشار الأكاديمي", "🌍 الترجمة", "🎓 المراجعة النقدية", "📄 المعاينة"])
+
+# --- تبويب المستشار الأكاديمي (الشات المعدل) ---
+with tabs[0]:
+    st.subheader("🎓 مستشار بناء الخطط والبحوث الأكاديمية")
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+    
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+            if message["role"] == "assistant":
+                st.download_button("📥 تحميل هذه الإجابة كملف Word", data=create_word_file(message["content"]), file_name="academic_plan.docx", key=str(uuid.uuid4()))
+
+    prompt = st.chat_input("اطلب بناء خطة بحثية أو اسأل سؤالاً علمياً...")
+    if prompt:
+        if deduct_attempt(1):
+            with st.chat_message("user"):
+                st.markdown(prompt)
+            st.session_state.chat_history.append({"role": "user", "content": prompt})
+            
+            with st.chat_message("assistant"):
+                with st.spinner("جاري التفكير الأكاديمي..."):
+                    academic_system_prompt = """
+                    أنت خبير أكاديمي متخصص في كتابة الخطط البحثية والاستشارات العلمية. 
+                    عندما يطلب المستخدم خطة بحث، يجب أن تقدمها بتفصيل شديد يتضمن:
+                    1. العنوان المقترح. 2. مشكلة البحث. 3. الأهداف والفرضيات. 4. هيكلية الفصول والمباحث. 5. المنهجية العلمية المتبعة.
+                    يجب أن تكون نبرتك بروفيسوراً ناصحاً، وتلتزم بدقة المصطلحات الأكاديمية حسب رغبة الطالب وتخصصه.
+                    """
+                    res = client.chat.completions.create(
+                        model="gpt-4o", 
+                        messages=[{"role": "system", "content": academic_system_prompt}] + st.session_state.chat_history
+                    )
+                    response = res.choices[0].message.content
+                    st.markdown(response)
+                    st.session_state.chat_history.append({"role": "assistant", "content": response})
+                    st.download_button("📥 تحميل الخطّة كملف Word", data=create_word_file(response), file_name="academic_output.docx")
+        else:
+            st.error("رصيدك غير كافٍ")
+
+# --- باقي التبويبات مع الحفاظ على الكود الصارم ---
 if up:
     up.seek(0)
     doc_v = fitz.open(stream=up.read(), filetype="pdf")
     st.session_state.total_pages = len(doc_v)
-    up.seek(0)
-
-    tabs = st.tabs(["💬 الشات", "🌍 الترجمة", "🎓 المراجعة الأكاديمية", "📄 المعاينة"])
-
+    
     with tabs[1]: 
         st.subheader("🌍 الترجمة الأكاديمية الكاملة")
         t_lang = st.selectbox("اللغة:", ["العربية", "English"], key="trans_lang")
         if st.button(f"بدء معالجة {st.session_state.total_pages} صفحة", key="tr_btn"):
             if deduct_attempt(st.session_state.total_pages):
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                with st.spinner("جاري استخراج وترجمة النص..."):
-                    for i in range(1, 40):
-                        time.sleep(0.01)
-                        progress_bar.progress(i)
-                        status_text.text(f"جاري قراءة الملف: {i}%")
-                    up.seek(0)
-                    doc = fitz.open(stream=up.read(), filetype="pdf")
-                    all_text = "\n".join([p.get_text() for p in doc])
-                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate this fully to {t_lang}:\n{all_text}"}])
-                    final_txt = res.choices[0].message.content
-                    for i in range(40, 101):
-                        time.sleep(0.01)
-                        progress_bar.progress(i)
-                        status_text.text(f"جاري تحضير ملف Word: {i}%")
-                    st.success("✅ اكتملت الترجمة!")
-                    st.download_button("📥 تحميل ملف Word المترجم", data=create_word_file(final_txt), file_name="translated_document.docx")
+                p_bar = st.progress(0)
+                up.seek(0)
+                doc = fitz.open(stream=up.read(), filetype="pdf")
+                all_text = "\n".join([p.get_text() for p in doc])
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate this fully to {t_lang}:\n{all_text}"}])
+                final_txt = res.choices[0].message.content
+                st.success("✅ اكتملت الترجمة!")
+                st.download_button("📥 تحميل ملف Word المترجم", data=create_word_file(final_txt), file_name="translated_document.docx")
             else: st.error("رصيدك غير كافٍ")
 
     with tabs[2]: 
@@ -158,47 +186,17 @@ if up:
         r_lang = st.selectbox("لغة تقرير المراجعة النهائية:", ["العربية", "English"], key="rev_lang")
         if st.button("توليد مراجعة أكاديمية متكاملة", key="rev_btn"):
             if deduct_attempt(st.session_state.total_pages):
-                p_bar = st.progress(0)
-                s_text = st.empty()
-                with st.spinner("جاري المراجعة العلمية الدقيقة..."):
-                    for i in range(1, 40):
-                        time.sleep(0.01)
-                        p_bar.progress(i)
-                        s_text.text(f"قراءة العناوين والمحتوى: {i}%")
+                with st.spinner("جاري المراجعة العلمية..."):
                     up.seek(0)
                     doc = fitz.open(stream=up.read(), filetype="pdf")
                     all_text = "\n".join([p.get_text() for p in doc])
-                    
-                    s_text.text("البروفيسور يقوم بصياغة الملاحظات النقدية...")
-                    
-                    # الأمر البرمجي المحدث لتقمص شخصية مراجع بشري مع الحفاظ على العناوين
-                    review_prompt = f"""
-                    أنت الآن مراجع أكاديمي بشري (Senior Reviewer) خبير في المجلات المحكمة. قم بمراجعة النص التالي باللغة {r_lang} حصراً وفق الضوابط التالية:
-                    1. الحفاظ الصارم على العناوين الأصلية للبحث كما وردت في الملف الأصلي.
-                    2. تحت كل عنوان أصلي، قدم مراجعة نقدية علمية تظهر فيها شخصيتك كمراجع بشري. استخدم عبارات تفاعلية مثل: (أشار الباحث هنا إلى، لاحظنا في هذا الجزء أن الكاتب، يرى المراجع أن هذا الطرح، ذكر الباحث في مقاله أن.. إلخ).
-                    3. لا تكتفِ بتصحيح الأخطاء، بل قدم "رؤية بروفيسور" تقيم جودة الحجة العلمية والمنهجية تحت كل قسم.
-                    4. المخرج النهائي يجب أن يكون منظماً: العنوان الأصلي يليه تحليل المراجع ونقده، وصولاً لورقة نهائية رصينة.
-                    5. اللغة المستخدمة هي {r_lang} فقط.
-                    النص المراد مراجعته: {all_text}
-                    """
-                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": "You are a senior academic reviewer with a distinct professional voice."}, {"role": "user", "content": review_prompt}])
+                    review_prompt = f"أنت مراجع أكاديمي بشري خبير. حافظ على العناوين الأصلية للنص التالي وقدم مراجعة نقدية تحت كل عنوان بأسلوبك الخاص باللغة {r_lang}. استخدم عبارات مثل 'يرى المراجع' و 'أشار الباحث'. النص: {all_text}"
+                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": "Senior Academic Reviewer Persona"}, {"role": "user", "content": review_prompt}])
                     final_txt = res.choices[0].message.content
-                    
-                    for i in range(40, 101):
-                        time.sleep(0.01)
-                        p_bar.progress(i)
-                        s_text.text(f"تجهيز تقرير المراجعة النهائي: {i}%")
-                    
-                    st.success("✅ اكتملت المراجعة العلمية بشخصية المراجع البشري!")
+                    st.success("✅ اكتملت المراجعة!")
                     st.write(final_txt)
                     st.download_button("📥 تحميل المراجعة العلمية (Word)", data=create_word_file(final_txt), file_name="academic_human_review.docx")
             else: st.error("رصيدك غير كافٍ")
-
-    with tabs[0]:
-        prompt = st.chat_input("اسأل...")
-        if prompt and deduct_attempt(1):
-            res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": prompt}])
-            st.info(res.choices[0].message.content)
 
     with tabs[3]:
         up.seek(0)
