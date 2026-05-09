@@ -96,17 +96,18 @@ with st.sidebar:
         if st.button("🔴 تسجيل الخروج"):
             st.session_state.clear(); st.rerun()
 
-    st.markdown("### 🏷️ جدول فئات الكروت")
+    st.markdown("### 🏷️ جدول فئات الكروت المحدثة")
     st.markdown("""
     <table class="price-table">
-        <tr><th>الفئة (دينار)</th><th>محاولات</th></tr>
-        <tr><td>10,000</td><td>66</td></tr>
-        <tr><td>20,000</td><td>133</td></tr>
-        <tr><td>30,000</td><td>200</td></tr>
-        <tr><td>40,000</td><td>266</td></tr>
-        <tr><td>50,000</td><td>333</td></tr>
-        <tr><td>100,000</td><td>666</td></tr>
+        <tr><th>الفئة (دينار عراقي)</th><th>عدد المحاولات</th></tr>
+        <tr><td>10,000</td><td>100 محاولة</td></tr>
+        <tr><td>20,000</td><td>200 محاولة</td></tr>
+        <tr><td>30,000</td><td>300 محاولة</td></tr>
+        <tr><td>40,000</td><td>400 محاولة</td></tr>
+        <tr><td>50,000</td><td>500 محاولة</td></tr>
+        <tr style='background-color: #fff3cd;'><td><b>100,000</b></td><td><b>1,000 محاولة</b></td></tr>
     </table>
+    <p style='text-align: center; font-size: 0.8em; color: #666;'>💡 المحاولة الواحدة تعادل ترجمة صفحة كاملة أو سؤال واحد للمستشار.</p>
     """, unsafe_allow_html=True)
 
 # --- بوابة الدخول المعدلة ---
