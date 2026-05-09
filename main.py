@@ -52,7 +52,6 @@ def deduct_attempt(amount):
 def run_progress_sync():
     progress_text = "جاري التحليل الأكاديمي العميق... يرجى الانتظار"
     my_bar = st.progress(0, text=progress_text)
-    # التقدم حتى 95% والبقاء بانتظار الملف
     for percent_complete in range(95):
         time.sleep(0.01)
         my_bar.progress(percent_complete + 1, text=progress_text)
@@ -72,7 +71,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- القائمة الجانبية (Sidebar) المعلومات الثابتة ---
+# --- القائمة الجانبية (Sidebar) ---
 with st.sidebar:
     st.markdown("### 🏦 معلومات الحساب والدعم")
     st.markdown(f"""
@@ -120,32 +119,45 @@ if "auth" not in st.session_state:
 
 # --- الواجهة الرئيسية ---
 st.markdown(f'<div class="main-header"><h1>مرحباً بك دكتور Courage</h1><h2>الرصيد المتوفر: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
-up = st.file_uploader("📂 ارفع ملف PDF للبدء", type=["pdf"])
 
 tabs = st.tabs(["💬 المستشار الذكي", "🌍 الترجمة الأكاديمية", "🎓 المراجعة العلمية", "📄 معاينة الملف"])
 
-# 1. المستشار الذكي
+# 1. المستشار الذكي (مستقل عن رفع الملف)
 with tabs[0]:
     st.subheader("🎓 مستشار البحوث والمقالات الرصينة")
     if "chat_history" not in st.session_state: st.session_state.chat_history = []
-    for msg in st.session_state.chat_history:
-        with st.chat_message(msg["role"]): st.markdown(msg["content"])
     
+    # مربع الحوار الأكاديمي
     c_prompt = st.chat_input("اطلب موضوع البحث أو المقالة هنا...")
+    
     if c_prompt:
         cost = 10 if any(w in c_prompt for w in ["بحث", "دراسة", "مقالة"]) else 1
-        if st.button(f"تأكيد وخصم {cost} محاولة"):
-            if deduct_attempt(cost):
-                m_bar = run_progress_sync()
-                sys_msg = "أنت بروفيسور أكاديمي محترف. اكتب بحوثاً تفصيلية جداً مع دمج مصادر أجنبية داخل الفقرات وفي النهاية باللغة العربية حصراً."
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": sys_msg}] + st.session_state.chat_history + [{"role": "user", "content": c_prompt}])
-                answer = res.choices[0].message.content
-                m_bar.progress(100, text="اكتملت المعالجة!")
-                st.markdown(answer)
-                st.session_state.chat_history.append({"role": "user", "content": c_prompt})
-                st.session_state.chat_history.append({"role": "assistant", "content": answer})
-                st.download_button("📥 تحميل المخرج (Word)", data=create_word_file(answer), file_name="scholar_research.docx")
-                time.sleep(1); m_bar.empty()
+        st.warning(f"⚠️ ستكلف هذه العملية {cost} محاولة.")
+        
+        # تنفيذ العملية مع شريط التقدم وظهور ملف الوورد
+        if deduct_attempt(cost):
+            m_bar = run_progress_sync()
+            sys_msg = "أنت بروفيسور أكاديمي محترف. اكتب بحوثاً تفصيلية جداً مع دمج مصادر أجنبية داخل الفقرات وفي النهاية باللغة العربية حصراً."
+            res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": sys_msg}] + st.session_state.chat_history + [{"role": "user", "content": c_prompt}])
+            answer = res.choices[0].message.content
+            
+            # اكتمال الشريط
+            m_bar.progress(100, text="اكتملت المعالجة الأكاديمية!")
+            
+            st.markdown(answer)
+            st.session_state.chat_history.append({"role": "user", "content": c_prompt})
+            st.session_state.chat_history.append({"role": "assistant", "content": answer})
+            
+            # زر تحميل ملف الوورد للإجابة
+            st.download_button("📥 تحميل المخرج (Word)", data=create_word_file(answer), file_name="scholar_research.docx")
+            time.sleep(1); m_bar.empty()
+    
+    # عرض سجل المحادثة تحت مربع الحوار (اختياري)
+    for msg in st.session_state.chat_history:
+        with st.chat_message(msg["role"]): st.markdown(msg["content"])
+
+# رفع الملف للتبويبات الأخرى
+up = st.file_uploader("📂 ارفع ملف PDF للترجمة أو المراجعة العلمية", type=["pdf"])
 
 if up:
     up.seek(0); doc_v = fitz.open(stream=up.read(), filetype="pdf"); p_count = len(doc_v)
