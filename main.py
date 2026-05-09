@@ -219,35 +219,43 @@ with tabs[0]:
             file_name=f"Research_Plan_{datetime.now().strftime('%Y%m%d')}.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
-# 2. الترجمة والمراجعة والمعاينة (بنفس الخوارزميات الاقتصادية)
-if up:
-    up.seek(0); doc_v = fitz.open(stream=up.read(), filetype="pdf"); p_count = len(doc_v)
-    
-    with tabs[1]:
-        st.subheader("🌍 ترجمة الملف بالكامل")
-        t_lang = st.selectbox("اللغة المستهدفة للترجمة:", ["العربية", "English"], key="t_lang")
-        if st.button(f"بدء ترجمة {p_count} صفحة"):
-            with st.spinner("🚀 جاري تحضير المحرك وبدء المعالجة..."):
-                if deduct_attempt(p_count):
-                    full_translation = ""
-                    prog_placeholder = st.empty()
-                    for i in range(0, p_count, 10):
-                        batch_text = "\n".join([doc_v[j].get_text() for j in range(i, min(i+10, p_count))])
-                        if batch_text.strip():
-                            res = client.chat.completions.create(
-                                model="gpt-4o-mini", 
-                                messages=[{"role": "user", "content": f"Translate to {t_lang}: {batch_text}"}]
-                            )
-                            full_translation += res.choices[0].message.content + "\n\n"
-                        percent = int((min(i + 10, p_count) / p_count) * 100)
-                        prog_placeholder.progress(percent, text=f"تمت ترجمة {min(i+10, p_count)} صفحة")
-                    st.session_state.translation_result = full_translation
-                    prog_placeholder.success("✅ تمت الترجمة بنجاح!")
-                else:
-                    st.error("عذراً، رصيدك لا يكفي.")
+with tabs[1]:
+        st.subheader("🌍 مترجم ScholarNode الشامل (ترجمة احترافية)")
+        t_lang = st.selectbox("اللغة المستهدفة للترجمة:", ["العربية", "English"], key="t_lang_new")
+        
+        if st.button(f"🚀 بدء ترجمة {p_count} صفحة"):
+            # التأكد من الرصيد أولاً
+            if st.session_state.credit >= p_count:
+                with st.spinner("جاري الترجمة الشاملة..."):
+                    if deduct_attempt(p_count):
+                        full_translation = ""
+                        prog_bar = st.progress(0)
+                        
+                        for i in range(p_count):
+                            page_text = doc_v[i].get_text()
+                            if page_text.strip():
+                                # استخدام mini لتوفير المال
+                                res = client.chat.completions.create(
+                                    model="gpt-4o-mini",
+                                    messages=[{"role": "system", "content": f"Translate to {t_lang}"}, 
+                                              {"role": "user", "content": page_text}]
+                                )
+                                full_translation += f"\n--- صفحة {i+1} ---\n" + res.choices[0].message.content + "\n"
+                            
+                            # تحديث التقدم صفحة بصفحة
+                            prog_bar.progress((i + 1) / p_count)
+                        
+                        st.session_state.translation_result = full_translation
+                        st.success("✅ اكتملت الترجمة!")
+            else:
+                st.error("عذراً، رصيدك لا يكفي لعدد صفحات الملف.")
         
         if "translation_result" in st.session_state:
-            st.download_button("📥 تحميل الملف المترجم", data=create_word_file(st.session_state.translation_result), file_name="Translated_Book.docx")
+            st.download_button(
+                label="📥 تحميل الكتاب المترجم (Word)",
+                data=create_word_file(st.session_state.translation_result),
+                file_name="ScholarNode_Translated.docx"
+            )
 
     with tabs[2]:
         st.subheader("🎓 مراجعة نقدية أكاديمية")
