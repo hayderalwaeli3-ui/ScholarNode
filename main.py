@@ -2,21 +2,34 @@ import streamlit as st
 import pandas as pd
 import os
 import io
+import uuid
 import random
 import string
 from datetime import datetime, timedelta
+from PIL import Image
 import fitz  # PyMuPDF
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt
+
+# --- إعدادات النظام والمفاتيح ---
+API_KEY = st.secrets["OPENAI_API_KEY"]
 from openai import OpenAI
+client = OpenAI(api_key=API_KEY)
 
-# --- إعدادات النظام ---
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 DB_CODES = "scholar_main_db.csv"
+DB_SECURITY = "device_tracking.csv"
 
-if not os.path.exists(DB_CODES):
-    pd.DataFrame(columns=["code", "credit", "remaining", "status", "activation_date", "expiry_date"]).to_csv(DB_CODES, index=False)
+# --- تهيئة قواعد البيانات ---
+def init_db():
+    if not os.path.exists(DB_CODES):
+        pd.DataFrame(columns=["code", "credit", "remaining", "status", "activation_date", "expiry_date"]).to_csv(DB_CODES, index=False)
+    if not os.path.exists(DB_SECURITY):
+        pd.DataFrame(columns=["device_id", "free_used", "is_blocked"]).to_csv(DB_SECURITY, index=False)
 
+init_db()
+
+# --- وظيفة إنشاء ملف Word بتنسيق عربي ---
 def create_word_file(text):
     doc = Document()
     p = doc.add_paragraph(text)
@@ -26,11 +39,24 @@ def create_word_file(text):
     bio.seek(0)
     return bio
 
+# --- وظائف الحماية والخصم ---
+def get_device_id():
+    return str(uuid.getnode())
+
 def deduct_attempt(amount=1):
     df = pd.read_csv(DB_CODES)
     idx_list = df.index[df['code'] == st.session_state.code].tolist()
     if idx_list:
         idx = idx_list[0]
+        expiry_val = df.at[idx, 'expiry_date']
+        if not pd.isna(expiry_val) and str(expiry_val) != "None":
+            try:
+                expiry = datetime.strptime(str(expiry_val), "%Y-%m-%d")
+                if datetime.now() > expiry:
+                    df.at[idx, 'status'] = "Expired"
+                    df.to_csv(DB_CODES, index=False)
+                    return False
+            except: pass
         if df.at[idx, 'remaining'] >= amount:
             df.at[idx, 'remaining'] -= amount
             df.to_csv(DB_CODES, index=False)
@@ -38,69 +64,136 @@ def deduct_attempt(amount=1):
             return True
     return False
 
-# --- التنسيق البصري ---
+# التنسيق البصري (CSS)
 st.set_page_config(page_title="ScholarNode Academy", layout="wide")
-st.markdown("""<style>
-    .main-header { background: #1e3a8a; color: white !important; padding: 30px; text-align: center; border-radius: 15px; border: 5px solid #facc15; margin-bottom: 25px; }
-    .payment-box { background: #1e3a8a; color: white !important; padding: 15px; border-radius: 10px; border: 3px solid #facc15; }
-    .price-table { width: 100%; border-collapse: collapse; border: 2px solid #ef4444; background: white; }
-    .price-table th { background: #ef4444; color: white; padding: 10px; }
-    .price-table td { border: 1px solid #ef4444; padding: 8px; text-align: center; color: black; }
-</style>""", unsafe_allow_html=True)
+st.markdown(f"""
+    <style>
+    .stApp {{ background-color: #ffffff !important; }}
+    .main-header {{ background: #1e3a8a; color: #ffffff !important; padding: 30px; text-align: center; border-radius: 15px; border: 5px solid #facc15; margin-bottom: 25px; }}
+    input[type="text"], input[type="password"], textarea {{ color: #000000 !important; background-color: #ffffff !important; font-weight: bold !important; font-size: 16px !important; border: 2px solid #1e3a8a !important; }}
+    h1, h2, h3, p, span, label {{ color: #000000 !important; font-weight: bold !important; }}
+    .price-table {{ width: 100%; border-collapse: collapse; background: #ffffff; border: 2px solid #ef4444; }}
+    .price-table th {{ background: #ef4444; color: white !important; padding: 10px; }}
+    .price-table td {{ border: 1px solid #ef4444; padding: 8px; text-align: center; color: #000000 !important; }}
+    .price-table tr:nth-child(odd) td {{ background: #fff1f2; }}
+    .price-table tr:nth-child(even) td {{ background: #facc15; }}
+    .payment-box {{ background: #1e3a8a; color: white !important; padding: 15px; border-radius: 10px; border: 3px solid #facc15; margin-bottom: 20px; }}
+    .logout-btn button {{ background-color: #ef4444 !important; color: white !important; font-weight: bold !important; }}
+    .finance-info {{ background: #fffbe6; color: #856404; padding: 15px; border-radius: 8px; border-right: 5px solid #facc15; margin-bottom: 20px; font-weight: bold; }}
+    </style>
+""", unsafe_allow_html=True)
 
-# --- القائمة الجانبية ---
+# القائمة الجانبية
 with st.sidebar:
     if "auth" in st.session_state:
+        st.markdown('<div class="logout-btn">', unsafe_allow_html=True)
         if st.button("🔴 تسجيل الخروج"):
-            st.session_state.clear()
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
             st.rerun()
-    
-    st.markdown('<div class="payment-box"><b>🏦 ماستر كارد الرافدين:</b><br>8369719342<br>👤 HAYDER Z. JASIM</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.write("---")
+
+    if "total_pages" in st.session_state:
+        base_cost = st.session_state.total_pages * 300
+        total_iqd = int(base_cost + (base_cost * 0.08))
+        st.markdown(f'<div class="finance-info">📊 تفاصيل كلفة الملف:<br>📄 عدد الصفحات: {st.session_state.total_pages}<br>💰 المبلغ الكلي: {total_iqd} دينار</div>', unsafe_allow_html=True)
+
+    st.markdown('<h2 style="color:#1e3a8a; text-align:center;">💳 معلومات الدفع</h2>', unsafe_allow_html=True)
+    st.markdown(f'<div class="payment-box"><b>🏦 ماستر كارد الرافدين:</b><br>8369719342<br><br><b>👤 الاسم:</b><br>HAYDER Z. JASIM<br><br><b>📞 الهاتف:</b><br><span style="font-size:18px;">07879974395</span></div>', unsafe_allow_html=True)
     
     st.markdown("### 🏷️ جدول الكروت")
-    st.markdown("""<table class="price-table">
-        <tr><th>الفئة (دينار)</th><th>المحاولات</th></tr>
-        <tr><td>10,000</td><td>66</td></tr>
-        <tr><td>20,000</td><td>133</td></tr>
-        <tr><td>30,000</td><td>200</td></tr>
-        <tr><td>40,000</td><td>266</td></tr>
-        <tr><td>50,000</td><td>333</td></tr>
-        <tr><td>100,000</td><td>666</td></tr>
-    </table>""", unsafe_allow_html=True)
-
+    st.markdown("""<table class="price-table"><tr><th>الفئة (دينار)</th><th>المحاولات</th></tr><tr><td>10,000</td><td>66</td></tr><tr><td>20,000</td><td>133</td></tr><tr><td>30,000</td><td>200</td></tr><tr><td>40,000</td><td>266</td></tr><tr><td>50,000</td><td>333</td></tr><tr><td>100,000</td><td>666</td></tr></table>""", unsafe_allow_html=True)
+    
     st.write("---")
-    adm_key = st.text_input("لوحة التحكم (Admin):", type="password")
-    if adm_key == "HAYDER_2026":
-        st.success("تم الدخول كمسؤول")
+    adm = st.text_input("لوحة التحكم (Admin):", type="password", key="admin_key")
+    if adm == "HAYDER_2026":
         cat = st.selectbox("توليد فئة:", [10, 20, 30, 40, 50, 100])
         if st.button("توليد كود الاشتراك"):
-            generated_token = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+            new_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
             attempts = {10: 66, 20: 133, 30: 200, 40: 266, 50: 333, 100: 666}[cat]
             df = pd.read_csv(DB_CODES)
-            new_entry = pd.DataFrame([{"code": generated_token, "credit": attempts, "remaining": attempts, "status": "Active", "activation_date": "None", "expiry_date": "None"}])
+            new_entry = pd.DataFrame([{"code": new_code, "credit": attempts, "remaining": attempts, "status": "Active", "activation_date": "None", "expiry_date": "None"}])
             pd.concat([df, new_entry]).to_csv(DB_CODES, index=False)
-            # تم حذف كلمة "الكود" ليظهر الرمز فقط كما طلبت
-            st.code(generated_token)
+            st.success(f"الكود: {new_code}")
 
-# --- بوابة الدخول ---
+# بوابة الدخول (تم حذف الدخول المجاني فقط)
 if "auth" not in st.session_state:
-    st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align:center;'>🔐 أدخل كود الاشتراك</h3>", unsafe_allow_html=True)
+    st.markdown('<div class="main-header"><h1>المنصة الأكاديمية (ScholarNode)</h1></div>', unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align:center;'>🔑 يرجى إدخال كود التفعيل للدخول</h3>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        u_code = st.text_input("كود الكارت:", type="password")
-        if st.button("دخول", use_container_width=True):
+        in_code = st.text_input("كود الكارت:", type="password", key="sub_code")
+        if st.button("تفعيل الحساب والدخول", use_container_width=True):
             df = pd.read_csv(DB_CODES)
-            match = df[(df['code'] == u_code.strip()) & (df['status'] == 'Active')]
+            match = df[(df['code'] == in_code.strip()) & (df['status'] == 'Active')]
             if not match.empty:
                 idx = match.index[0]
-                st.session_state.update({"auth": True, "credit": df.at[idx, 'remaining'], "code": u_code.strip()})
+                if df.at[idx, 'activation_date'] == "None":
+                    df.at[idx, 'activation_date'] = datetime.now().strftime("%Y-%m-%d")
+                    df.at[idx, 'expiry_date'] = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
+                    df.to_csv(DB_CODES, index=False)
+                st.session_state.update({"auth": True, "mode": "pro", "user": "باحث مشترك", "credit": df.at[idx, 'remaining'], "code": in_code.strip()})
                 st.rerun()
             else: st.error("الكود غير صحيح")
     st.stop()
 
-# --- الواجهة الرئيسية ---
-st.markdown(f'<div class="main-header"><h1>مرحباً دكتور</h1><h2>الرصيد: {st.session_state.credit}</h2></div>', unsafe_allow_html=True)
-up = st.file_uploader("📂 ارفع ملف PDF", type=["pdf"])
-if up:
-    st.success("تم رفع الملف بنجاح")
+# الواجهة الرئيسية
+st.markdown(f'<div class="main-header"><h1>مرحباً {st.session_state.user}</h1><h2 style="color:#facc15 !important;">الرصيد: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
+uploaded_file = st.file_uploader("📂 ارفع ملفك هنا (PDF)", type=["pdf"])
+
+if uploaded_file:
+    doc_temp = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+    st.session_state.total_pages = len(doc_temp)
+    uploaded_file.seek(0)
+
+tabs = st.tabs(["💬 الشات الأكاديمي", "🌍 الترجمة", "🎓 المراجعة", "📄 المعاينة والتحليل"])
+
+with tabs[1]:
+    st.subheader("🌍 خدمة الترجمة الأكاديمية")
+    if uploaded_file:
+        target_lang = st.selectbox("ترجمة إلى:", ["العربية", "English"], key="lang_select")
+        if st.button(f"بدء ترجمة الملف ({st.session_state.total_pages} صفحة)"):
+            if deduct_attempt(st.session_state.total_pages):
+                doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+                all_text = "\n".join([page.get_text() for page in doc])
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate to {target_lang}:\n{all_text[:12000]}"}])
+                st.write(res.choices[0].message.content)
+                st.download_button(label="📥 تحميل الترجمة كملف Word", data=create_word_file(res.choices[0].message.content), file_name="translated.docx")
+            else: st.error("رصيدك غير كافٍ.")
+
+with tabs[2]:
+    st.subheader("🎓 خدمة المراجعة الأكاديمية")
+    if uploaded_file:
+        if st.button(f"بدء المراجعة ({st.session_state.total_pages} صفحة)"):
+            if deduct_attempt(st.session_state.total_pages):
+                doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+                all_text = "\n".join([page.get_text() for page in doc])
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Review this academic text:\n{all_text[:12000]}"}])
+                st.write(res.choices[0].message.content)
+                st.download_button(label="📥 تحميل المراجعة كملف Word", data=create_word_file(res.choices[0].message.content), file_name="reviewed.docx")
+            else: st.error("رصيدك غير كافٍ.")
+
+with tabs[0]:
+    prompt = st.chat_input("اسأل أي شيء...")
+    if prompt:
+        if deduct_attempt(1):
+            res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": prompt}])
+            st.markdown(f'<div style="color:black; background:#f0f2f6; padding:15px; border-radius:10px; border-right:5px solid #1e3a8a;">{res.choices[0].message.content}</div>', unsafe_allow_html=True)
+
+with tabs[3]:
+    if uploaded_file:
+        doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+        c_left, c_right = st.columns([1, 2])
+        with c_left:
+            page_num = st.number_input("رقم الصفحة:", 1, len(doc), 1)
+            user_task = st.text_area("المهمة:", key="page_task")
+            if st.button("معالجة الصفحة"):
+                if deduct_attempt(1):
+                    ai_res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"نص: {doc[page_num-1].get_text()}\nمهمة: {user_task}"}])
+                    st.success(ai_res.choices[0].message.content)
+        with c_right:
+            pix = doc[page_num-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
+            st.image(Image.open(io.BytesIO(pix.tobytes())), caption=f"معاينة الصفحة {page_num}")
+
+st.markdown("<br><hr><p style='text-align:center; color:black;'>ScholarNode Academy © 2026</p>", unsafe_allow_html=True)
