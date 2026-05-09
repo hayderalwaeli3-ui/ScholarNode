@@ -140,7 +140,6 @@ if up:
                     up.seek(0)
                     doc = fitz.open(stream=up.read(), filetype="pdf")
                     all_text = "\n".join([p.get_text() for p in doc])
-                    status_text.text("جاري إرسال البيانات للترجمة...")
                     res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate this fully to {t_lang}:\n{all_text}"}])
                     final_txt = res.choices[0].message.content
                     for i in range(40, 101):
@@ -153,7 +152,7 @@ if up:
 
     with tabs[2]: 
         st.subheader("🎓 المراجعة العلمية النقدية")
-        r_lang = st.selectbox("لغة المراجعة المطلوبة:", ["العربية", "English"], key="rev_lang")
+        r_lang = st.selectbox("لغة تقرير المراجعة:", ["العربية", "English"], key="rev_lang")
         if st.button("بدء المراجعة الشاملة والنقد العلمي", key="rev_btn"):
             if deduct_attempt(st.session_state.total_pages):
                 p_bar = st.progress(0)
@@ -162,34 +161,36 @@ if up:
                     for i in range(1, 40):
                         time.sleep(0.01)
                         p_bar.progress(i)
-                        s_text.text(f"قراءة المحتوى العلمي: {i}%")
+                        s_text.text(f"تحليل المحتوى الأكاديمي: {i}%")
                     up.seek(0)
                     doc = fitz.open(stream=up.read(), filetype="pdf")
                     all_text = "\n".join([p.get_text() for p in doc])
                     
-                    s_text.text("البروفيسور يقوم بمراجعة الملف الآن...")
-                    # التعليمات الجديدة للمراجعة الأكاديمية النقدية
+                    s_text.text("البروفيسور يقوم بمراجعة الملف الآن تفصيلياً...")
+                    
+                    # تعديل النقد ليكون باللغة العربية حصراً وبشكل مفصل
                     review_prompt = f"""
-                    Act as an expert academic reviewer and professor. Provide a comprehensive academic review of the following text in {r_lang}. 
-                    The review must include:
-                    1. A summary of the study's core idea.
-                    2. Academic evaluation of the methodology and language.
-                    3. Critical scientific remarks and points of weakness or strength.
-                    4. Constructive suggestions for improvement.
-                    5. A final polished version of the text after incorporating improvements.
-                    Text: {all_text}
+                    أنت الآن بروفيسور أكاديمي خبير ومراجع للدراسات العليا. قم بإجراء مراجعة نقدية شاملة وتفصيلية للنص المرفق أدناه.
+                    يجب أن يكون التقرير بالكامل باللغة {r_lang} فقط.
+                    يجب أن تتبع المراجعة هيكلية البحث الأصلي فقرة بفقرة (Detailed feedback):
+                    1. نقد المنهجية المتبعة في كل فصل أو فقرة.
+                    2. تقديم ملاحظات نقدية علمية صريحة (نقاط القوة ونقاط الضعف).
+                    3. تقديم مقترحات أكاديمية دقيقة لتطوير النص.
+                    4. صياغة النص النهائي بعد التحسين والتدقيق العلمي الرصين.
+                    ملاحظة: لا تستخدم أي لغة أخرى غير {r_lang} في ملف الوورد الناتج.
+                    النص المراد مراجعته: {all_text}
                     """
-                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": "You are a senior academic reviewer."}, {"role": "user", "content": review_prompt}])
+                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": "You are a professional academic reviewer and senior professor."}, {"role": "user", "content": review_prompt}])
                     final_txt = res.choices[0].message.content
                     
                     for i in range(40, 101):
                         time.sleep(0.01)
                         p_bar.progress(i)
-                        s_text.text(f"تجهيز تقرير المراجعة: {i}%")
+                        s_text.text(f"تجهيز النسخة النهائية للملف: {i}%")
                     
-                    st.success("✅ اكتملت المراجعة العلمية!")
+                    st.success("✅ اكتملت المراجعة العلمية بنجاح!")
                     st.write(final_txt)
-                    st.download_button("📥 تحميل تقرير المراجعة (Word)", data=create_word_file(final_txt), file_name="academic_review.docx")
+                    st.download_button("📥 تحميل تقرير المراجعة الأكاديمية (Word)", data=create_word_file(final_txt), file_name="academic_review_detailed.docx")
             else: st.error("رصيدك غير كافٍ")
 
     with tabs[0]:
