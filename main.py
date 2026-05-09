@@ -109,17 +109,24 @@ with st.sidebar:
     </table>
     """, unsafe_allow_html=True)
 
-# --- بوابة الدخول ---
+# --- بوابة الدخول المعدلة ---
 if "auth" not in st.session_state:
     st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
     in_c = st.text_input("أدخل كود التفعيل للدخول:", type="password")
     if st.button("دخول", use_container_width=True):
+        # 1. التحقق أولاً إذا كان الكود هو كود الإدارة الخاص بك
+        if in_c.strip() == "HAYDER_2026":
+            st.session_state.update({"auth": True, "credit": 9999, "code": "HAYDER_2026"})
+            st.rerun()
+            
+        # 2. إذا لم يكن كود إدارة، يبحث في قاعدة البيانات عن الأكواد العادية
         df = pd.read_csv(DB_CODES)
         match = df[(df['code'] == in_c.strip()) & (df['status'] == 'Active')]
         if not match.empty:
             st.session_state.update({"auth": True, "credit": df.at[match.index[0], 'remaining'], "code": in_c.strip()})
             st.rerun()
-        else: st.error("الكود غير صحيح")
+        else: 
+            st.error("الكود غير صحيح")
     st.stop()
 
 # --- قسم لوحة الإدارة (يظهر فقط عند الضغط على زر الإدارة) ---
