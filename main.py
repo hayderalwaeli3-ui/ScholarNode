@@ -12,7 +12,7 @@ from docx.shared import Pt
 from openai import OpenAI
 import time
 
-# --- [كود رقم 1] - إعدادات النظام والمفاتيح (بروتوكول الحماية المطلقة) ---
+# --- [كود رقم 2] - إعدادات النظام والمفاتيح (بروتوكول الحماية المطلقة) ---
 API_KEY = st.secrets["OPENAI_API_KEY"]
 client = OpenAI(api_key=API_KEY)
 DB_CODES = "scholar_main_db.csv"
@@ -48,15 +48,15 @@ def deduct_attempt(amount):
             return True
     return False
 
-def run_progress_bar():
-    progress_text = "جاري المعالجة الأكاديمية... يرجى الانتظار"
+# تعديل شريط الإنجاز ليكون متزامناً مع ظهور ملف الوورد
+def run_progress_sync():
+    progress_text = "جاري التحليل الأكاديمي العميق..."
     my_bar = st.progress(0, text=progress_text)
-    for percent_complete in range(100):
-        time.sleep(0.01)
+    # التقدم السريع حتى 95%
+    for percent_complete in range(95):
+        time.sleep(0.02)
         my_bar.progress(percent_complete + 1, text=progress_text)
-    time.sleep(0.4)
-    st.success("✅ اكتملت العملية بنجاح!")
-    my_bar.empty()
+    return my_bar
 
 # --- تنسيق الألوان الذكي والحماية المطلقة (CSS) ---
 st.set_page_config(page_title="ScholarNode Academy", layout="wide", initial_sidebar_state="expanded")
@@ -72,22 +72,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- القائمة الجانبية (Sidebar) ---
+# --- القائمة الجانبية ---
 with st.sidebar:
     st.markdown("### 🏦 معلومات الحساب والدعم")
-    st.markdown(f"""
-    <div class="payment-box">
-        👤 <b>الاسم:</b> HAYDER Z. JASIM<br>
-        💳 <b>ماستر كارد الرافدين:</b><br> 8369719342<br>
-        📞 <b>الدعم والتفعيل:</b> 07879974395
-    </div>
-    """, unsafe_allow_html=True)
-    
+    st.markdown(f"""<div class="payment-box">👤 <b>الاسم:</b> HAYDER Z. JASIM<br>💳 <b>ماستر كارد الرافدين:</b><br> 8369719342<br>📞 <b>الدعم والتفعيل:</b> 07879974395</div>""", unsafe_allow_html=True)
     if "auth" in st.session_state:
         st.write(f"🎟️ **الكود:** `{st.session_state.code}`")
-        if st.button("🔴 تسجيل الخروج"):
-            st.session_state.clear(); st.rerun()
-
+        if st.button("🔴 تسجيل الخروج"): st.session_state.clear(); st.rerun()
     st.markdown("### 🏷️ جدول فئات الكروت")
     st.markdown("""<table class="price-table"><tr><th>الفئة (دينار)</th><th>محاولات</th></tr><tr><td>10,000</td><td>66</td></tr><tr><td>20,000</td><td>133</td></tr><tr><td>30,000</td><td>200</td></tr><tr><td>40,000</td><td>266</td></tr><tr><td>50,000</td><td>333</td></tr><tr><td>100,000</td><td>666</td></tr></table>""", unsafe_allow_html=True)
 
@@ -119,20 +110,19 @@ with tabs[0]:
     if "chat_history" not in st.session_state: st.session_state.chat_history = []
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]): st.markdown(msg["content"])
-    
     c_prompt = st.chat_input("اطلب موضوع البحث أو المقالة هنا...")
     if c_prompt:
         cost = 10 if any(w in c_prompt for w in ["بحث", "دراسة", "مقالة"]) else 1
         if st.button(f"تأكيد وخصم {cost} محاولة"):
             if deduct_attempt(cost):
-                run_progress_bar()
-                sys_msg = "أنت بروفيسور أكاديمي محترف. اكتب بحوثاً تفصيلية مع دمج مصادر أجنبية داخل الفقرات وفي النهاية باللغة العربية حصراً إلا إذا طلب المستخدم لغة أخرى."
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": sys_msg}] + st.session_state.chat_history + [{"role": "user", "content": c_prompt}])
+                m_bar = run_progress_sync()
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": "أنت بروفيسور أكاديمي. اكتب بحوثاً تفصيلية جداً مع دمج مصادر أجنبية داخل الفقرات."}] + st.session_state.chat_history + [{"role": "user", "content": c_prompt}])
                 answer = res.choices[0].message.content
+                m_bar.progress(100, text="اكتملت المعالجة!")
                 st.markdown(answer)
-                st.session_state.chat_history.append({"role": "user", "content": c_prompt})
                 st.session_state.chat_history.append({"role": "assistant", "content": answer})
-                st.download_button("📥 تحميل المخرج (Word)", data=create_word_file(answer), file_name="scholar_output.docx")
+                st.download_button("📥 تحميل المخرج (Word)", data=create_word_file(answer), file_name="research_output.docx")
+                time.sleep(1); m_bar.empty()
 
 if up:
     up.seek(0); doc_v = fitz.open(stream=up.read(), filetype="pdf"); p_count = len(doc_v)
@@ -141,29 +131,30 @@ if up:
     with tabs[1]:
         st.subheader("🌍 ترجمة أكاديمية احترافية")
         t_lang = st.selectbox("لغة الترجمة المستهدفة:", ["العربية", "English"], key="t_lang")
-        st.info(f"💰 التكلفة: {att_req} محاولة")
         if st.button("بدء الترجمة"):
             if deduct_attempt(att_req):
-                run_progress_bar()
+                m_bar = run_progress_sync()
                 all_text = "\n".join([p.get_text() for p in doc_v])
-                # إجبار النموذج على اللغة المختارة
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate the following text strictly into {t_lang}. Do not use any other language:\n\n{all_text}"}])
+                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Strictly translate to {t_lang}:\n{all_text}"}])
+                m_bar.progress(100, text="اكتملت الترجمة!")
                 st.download_button("📥 تحميل الملف المترجم (Word)", data=create_word_file(res.choices[0].message.content), file_name=f"translated_{t_lang}.docx")
+                time.sleep(1); m_bar.empty()
 
     with tabs[2]:
-        st.subheader("🎓 مراجعة نقدية جاهزة للنشر")
+        st.subheader("🎓 مراجعة نقدية (مطولة موازية لحجم الملف)")
         r_lang = st.selectbox("لغة التقرير المطلوبة:", ["العربية", "English"], key="r_lang")
-        st.info(f"💰 التكلفة: {att_req} محاولة")
         if st.button("توليد تقرير المراجعة"):
             if deduct_attempt(att_req):
-                run_progress_bar()
+                m_bar = run_progress_sync()
                 all_text = "\n".join([p.get_text() for p in doc_v])
-                # تعديل جوهري لضمان الالتزام باللغة المختارة
-                sys_rev = f"You are an academic reviewer. Write a critical, publisher-ready review. You MUST write the entire report in {r_lang} only. Maintain original headings."
+                # تعليمات المراجعة المطولة الموازية
+                sys_rev = f"You are an academic reviewer. Write a CRITICAL and EXTENSIVE review strictly in {r_lang}. The length of your review MUST match the volume of the original text ({p_count} pages). provide detailed analysis for every section."
                 res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": sys_rev}, {"role": "user", "content": all_text}])
                 answer = res.choices[0].message.content
+                m_bar.progress(100, text="اكتمل التقرير!")
                 st.markdown(answer)
-                st.download_button("📥 تحميل تقرير المراجعة (Word)", data=create_word_file(answer), file_name=f"review_{r_lang}.docx")
+                st.download_button("📥 تحميل تقرير المراجعة (Word)", data=create_word_file(answer), file_name=f"extended_review_{r_lang}.docx")
+                time.sleep(1); m_bar.empty()
 
     with tabs[3]:
         st.subheader("📄 معاينة ومناقشة الملف")
@@ -171,10 +162,12 @@ if up:
         q_p = st.text_input("اسأل عن هذه الصفحة:")
         if st.button("إرسال السؤال"):
             if deduct_attempt(1):
-                run_progress_bar()
+                m_bar = run_progress_sync()
                 res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": f"Context: {doc_v[p_idx-1].get_text()}"}, {"role": "user", "content": q_p}])
+                m_bar.progress(100, text="تم الرد!")
                 st.info(res.choices[0].message.content)
                 st.download_button("📥 تحميل الإجابة (Word)", data=create_word_file(res.choices[0].message.content), file_name="response.docx")
+                time.sleep(1); m_bar.empty()
         pix = doc_v[p_idx-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
         st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
 
