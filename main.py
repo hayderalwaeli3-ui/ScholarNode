@@ -29,11 +29,15 @@ def init_db():
 
 init_db()
 
-# --- وظيفة إنشاء ملف Word بتنسيق عربي ---
+# --- وظيفة إنشاء ملف Word بتنسيق أكاديمي رصين ---
 def create_word_file(text):
     doc = Document()
     p = doc.add_paragraph(text)
     p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    # ضبط الخط ليكون ملائماً للنشر العلمي
+    for run in p.runs:
+        run.font.size = Pt(14)
+        run.font.name = 'Arial'
     bio = io.BytesIO()
     doc.save(bio)
     bio.seek(0)
@@ -151,46 +155,45 @@ if up:
             else: st.error("رصيدك غير كافٍ")
 
     with tabs[2]: 
-        st.subheader("🎓 المراجعة العلمية النقدية")
-        r_lang = st.selectbox("لغة تقرير المراجعة:", ["العربية", "English"], key="rev_lang")
-        if st.button("بدء المراجعة الشاملة والنقد العلمي", key="rev_btn"):
+        st.subheader("🎓 المراجعة والنشر العلمي")
+        r_lang = st.selectbox("لغة البحث النهائية:", ["العربية", "English"], key="rev_lang")
+        if st.button("توليد ورقة بحثية نهائية للنشر", key="rev_btn"):
             if deduct_attempt(st.session_state.total_pages):
                 p_bar = st.progress(0)
                 s_text = st.empty()
-                with st.spinner("جاري تحليل الدراسة وتقديم ملاحظات نقدية..."):
+                with st.spinner("جاري صياغة البحث للنشر العلمي..."):
                     for i in range(1, 40):
                         time.sleep(0.01)
                         p_bar.progress(i)
-                        s_text.text(f"تحليل المحتوى الأكاديمي: {i}%")
+                        s_text.text(f"تحليل الدراسة: {i}%")
                     up.seek(0)
                     doc = fitz.open(stream=up.read(), filetype="pdf")
                     all_text = "\n".join([p.get_text() for p in doc])
                     
-                    s_text.text("البروفيسور يقوم بمراجعة الملف الآن تفصيلياً...")
+                    s_text.text("جاري كتابة الورقة النهائية للنشر (Final Manuscript)...")
                     
-                    # تعديل النقد ليكون باللغة العربية حصراً وبشكل مفصل
+                    # الأمر البرمجي المحدث لإنتاج ورقة نهائية للنشر
                     review_prompt = f"""
-                    أنت الآن بروفيسور أكاديمي خبير ومراجع للدراسات العليا. قم بإجراء مراجعة نقدية شاملة وتفصيلية للنص المرفق أدناه.
-                    يجب أن يكون التقرير بالكامل باللغة {r_lang} فقط.
-                    يجب أن تتبع المراجعة هيكلية البحث الأصلي فقرة بفقرة (Detailed feedback):
-                    1. نقد المنهجية المتبعة في كل فصل أو فقرة.
-                    2. تقديم ملاحظات نقدية علمية صريحة (نقاط القوة ونقاط الضعف).
-                    3. تقديم مقترحات أكاديمية دقيقة لتطوير النص.
-                    4. صياغة النص النهائي بعد التحسين والتدقيق العلمي الرصين.
-                    ملاحظة: لا تستخدم أي لغة أخرى غير {r_lang} في ملف الوورد الناتج.
-                    النص المراد مراجعته: {all_text}
+                    أنت الآن بروفيسور خبير ومحرر في كبرى المجلات العلمية الدولية. مهمتك هي إعادة صياغة النص التالي بالكامل ليكون (ورقة بحثية نهائية جاهزة للنشر فوراً) باللغة {r_lang} فقط.
+                    الشروط الصارمة:
+                    1. ممنوع منعاً باتاً ذكر (الفقرة الأولى، الفقرة الثانية) أو استخدام ترقيم الملاحظات.
+                    2. يجب دمج كافة التحسينات العلمية والنقدية في صلب النص مباشرة ليكون بحثاً رصيناً متكاملاً.
+                    3. يجب أن تكون الصياغة أكاديمية رفيعة المستوى، تليق بالنشر في المجلات المحكمة.
+                    4. المخرج النهائي يجب أن يكون نص البحث الكامل بعد معالجته علمياً، وليس تقريراً عن البحث.
+                    5. لغة الملف الناتج هي {r_lang} حصراً.
+                    النص المراد معالجته للنشر: {all_text}
                     """
-                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": "You are a professional academic reviewer and senior professor."}, {"role": "user", "content": review_prompt}])
+                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": "You are a senior academic editor. Output a ready-to-publish manuscript only."}, {"role": "user", "content": review_prompt}])
                     final_txt = res.choices[0].message.content
                     
                     for i in range(40, 101):
                         time.sleep(0.01)
                         p_bar.progress(i)
-                        s_text.text(f"تجهيز النسخة النهائية للملف: {i}%")
+                        s_text.text(f"تجهيز نسخة النشر النهائية: {i}%")
                     
-                    st.success("✅ اكتملت المراجعة العلمية بنجاح!")
+                    st.success("✅ تمت صياغة البحث بنجاح وهو جاهز للنشر!")
                     st.write(final_txt)
-                    st.download_button("📥 تحميل تقرير المراجعة الأكاديمية (Word)", data=create_word_file(final_txt), file_name="academic_review_detailed.docx")
+                    st.download_button("📥 تحميل البحث النهائي للنشر (Word)", data=create_word_file(final_txt), file_name="ready_for_publication.docx")
             else: st.error("رصيدك غير كافٍ")
 
     with tabs[0]:
