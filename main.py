@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 import io
-import random
-import string
+import math
 from PIL import Image
 import fitz  # PyMuPDF
 from docx import Document
@@ -12,24 +11,20 @@ from docx.shared import Pt
 from openai import OpenAI
 import time
 
-# --- [كود رقم 2] - إعدادات النظام والمفاتيح (بروتوكول الحماية المطلقة) ---
+# --- [كود رقم 6] - بروتوكول الحماية المطلقة والشاملة ---
 API_KEY = st.secrets["OPENAI_API_KEY"]
 client = OpenAI(api_key=API_KEY)
 DB_CODES = "scholar_main_db.csv"
 
-# --- وظائف السياسة المادية المحسنة ---
-def calculate_costs(pages):
-    attempts = pages
-    iqd_cost = int((pages * 300) * 1.08)
-    return attempts, iqd_cost
-
-def create_word_file(text):
+# --- وظائف السياسة المادية والمعالجة الذكية ---
+def create_word_file(text_content):
     doc = Document()
-    p = doc.add_paragraph(text)
+    style = doc.styles['Normal']
+    font = style.font
+    font.name = 'Arial'
+    font.size = Pt(13)
+    p = doc.add_paragraph(text_content)
     p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    for run in p.runs:
-        run.font.size = Pt(14)
-        run.font.name = 'Arial'
     bio = io.BytesIO()
     doc.save(bio)
     bio.seek(0)
@@ -48,127 +43,120 @@ def deduct_attempt(amount):
             return True
     return False
 
-# تعديل شريط الإنجاز ليكون متزامناً مع ظهور ملف الوورد
-def run_progress_sync():
-    progress_text = "جاري التحليل الأكاديمي العميق..."
-    my_bar = st.progress(0, text=progress_text)
-    # التقدم السريع حتى 95%
-    for percent_complete in range(95):
-        time.sleep(0.02)
-        my_bar.progress(percent_complete + 1, text=progress_text)
-    return my_bar
+def run_progress_with_percent():
+    p_bar = st.progress(0, text="جاري المعالجة الأكاديمية... 0%")
+    for p in range(1, 101):
+        time.sleep(0.01)
+        p_bar.progress(p, text=f"جاري المعالجة الأكاديمية... {p}%")
+    return p_bar
 
-# --- تنسيق الألوان الذكي والحماية المطلقة (CSS) ---
-st.set_page_config(page_title="ScholarNode Academy", layout="wide", initial_sidebar_state="expanded")
+# --- تنسيق الواجهة (CSS) ---
+st.set_page_config(page_title="ScholarNode Academy", layout="wide")
 st.markdown("""
 <style>
 #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
 .stDeployButton {display:none;}
-.main-header { background: #1e3a8a; color: #ffffff !important; padding: 20px; text-align: center; border-radius: 15px; border: 4px solid #facc15; margin-bottom: 25px; }
-.payment-box { background: #1e3a8a; color: white !important; padding: 18px; border-radius: 12px; border: 3px solid #facc15; font-size: 0.95rem; line-height: 1.6; }
-.price-table { width: 100%; border-collapse: collapse; margin: 10px 0; background: transparent; }
-.price-table th { background: #ef4444; color: white !important; padding: 12px; border: 1px solid #ddd; }
-.price-table td { border: 1px solid #ddd; padding: 10px; text-align: center; color: inherit !important; font-weight: bold; }
+.main-header { background: #1e3a8a; color: white !important; padding: 20px; text-align: center; border-radius: 15px; border: 4px solid #facc15; }
+.payment-box { background: #1e3a8a; color: white; padding: 15px; border-radius: 10px; border: 2px solid #facc15; }
+.price-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+.price-table th { background: #ef4444; color: white; padding: 10px; }
+.price-table td { border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- القائمة الجانبية ---
 with st.sidebar:
-    st.markdown("### 🏦 معلومات الحساب والدعم")
-    st.markdown(f"""<div class="payment-box">👤 <b>الاسم:</b> HAYDER Z. JASIM<br>💳 <b>ماستر كارد الرافدين:</b><br> 8369719342<br>📞 <b>الدعم والتفعيل:</b> 07879974395</div>""", unsafe_allow_html=True)
+    st.markdown("### 🏦 الحساب والدعم")
+    st.markdown(f'<div class="payment-box">👤 <b>الاسم:</b> HAYDER Z. JASIM<br>💳 <b>الماستر:</b> 8369719342<br>📞 <b>الدعم:</b> 07879974395</div>', unsafe_allow_html=True)
     if "auth" in st.session_state:
-        st.write(f"🎟️ **الكود:** `{st.session_state.code}`")
-        if st.button("🔴 تسجيل الخروج"): st.session_state.clear(); st.rerun()
-    st.markdown("### 🏷️ جدول فئات الكروت")
-    st.markdown("""<table class="price-table"><tr><th>الفئة (دينار)</th><th>محاولات</th></tr><tr><td>10,000</td><td>66</td></tr><tr><td>20,000</td><td>133</td></tr><tr><td>30,000</td><td>200</td></tr><tr><td>40,000</td><td>266</td></tr><tr><td>50,000</td><td>333</td></tr><tr><td>100,000</td><td>666</td></tr></table>""", unsafe_allow_html=True)
+        st.write(f"🎟️ الكود: `{st.session_state.code}`")
+        if st.button("🔴 خروج"): st.session_state.clear(); st.rerun()
+    st.markdown("### 🏷️ جدول الكروت")
+    st.markdown("""<table class="price-table"><tr><th>الفئة</th><th>محاولات</th></tr><tr><td>10k</td><td>66</td></tr><tr><td>20k</td><td>133</td></tr><tr><td>50k</td><td>333</td></tr><tr><td>100k</td><td>666</td></tr></table>""", unsafe_allow_html=True)
 
 # --- بوابة الدخول ---
 if "auth" not in st.session_state:
     st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 5, 1])
-    with col2:
-        in_c = st.text_input("أدخل كود التفعيل:", type="password")
-        if st.button("دخول النظام"):
-            if os.path.exists(DB_CODES):
-                df = pd.read_csv(DB_CODES); match = df[(df['code'] == in_c.strip()) & (df['status'] == 'Active')]
-                if not match.empty:
-                    idx = match.index[0]
-                    st.session_state.update({"auth": True, "user": "باحث مشترك", "credit": df.at[idx, 'remaining'], "code": in_c.strip()})
-                    st.rerun()
-                else: st.error("الكود غير صحيح")
+    in_c = st.text_input("أدخل كود التفعيل:", type="password")
+    if st.button("دخول النظام"):
+        if os.path.exists(DB_CODES):
+            df = pd.read_csv(DB_CODES); match = df[df['code'] == in_c.strip()]
+            if not match.empty:
+                st.session_state.update({"auth": True, "credit": df.at[match.index[0], 'remaining'], "code": in_c.strip()})
+                st.rerun()
     st.stop()
 
 # --- الواجهة الرئيسية ---
-st.markdown(f'<div class="main-header"><h1>مرحباً بك دكتور Courage</h1><h2>الرصيد المتوفر: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
-up = st.file_uploader("📂 ارفع ملف PDF للبدء", type=["pdf"])
+st.markdown(f'<div class="main-header"><h1>مرحباً بك دكتور Courage</h1><h2>الرصيد: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
+
+# 1. دعم كافة ملفات المايكروسوفت أوفيس في الأعلى
+up = st.file_uploader("📂 ارفع ملف البحث (PDF, DOCX, XLSX, PPTX)", type=["pdf", "docx", "xlsx", "pptx"])
 
 tabs = st.tabs(["💬 المستشار الذكي", "🌍 الترجمة الأكاديمية", "🎓 المراجعة العلمية", "📄 معاينة الملف"])
 
-# 1. المستشار الذكي
+# 2. المستشار الذكي (السياسة المالية: 700 كلمة = 33 محاولة)
 with tabs[0]:
-    st.subheader("🎓 مستشار البحوث والمقالات الرصينة")
-    if "chat_history" not in st.session_state: st.session_state.chat_history = []
-    for msg in st.session_state.chat_history:
-        with st.chat_message(msg["role"]): st.markdown(msg["content"])
-    c_prompt = st.chat_input("اطلب موضوع البحث أو المقالة هنا...")
-    if c_prompt:
-        cost = 10 if any(w in c_prompt for w in ["بحث", "دراسة", "مقالة"]) else 1
-        if st.button(f"تأكيد وخصم {cost} محاولة"):
-            if deduct_attempt(cost):
-                m_bar = run_progress_sync()
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": "أنت بروفيسور أكاديمي. اكتب بحوثاً تفصيلية جداً مع دمج مصادر أجنبية داخل الفقرات."}] + st.session_state.chat_history + [{"role": "user", "content": c_prompt}])
-                answer = res.choices[0].message.content
-                m_bar.progress(100, text="اكتملت المعالجة!")
-                st.markdown(answer)
-                st.session_state.chat_history.append({"role": "assistant", "content": answer})
-                st.download_button("📥 تحميل المخرج (Word)", data=create_word_file(answer), file_name="research_output.docx")
-                time.sleep(1); m_bar.empty()
+    st.subheader("🎓 مستشار البحوث الرصينة")
+    c_p = st.chat_input("اطلب موضوع البحث التفصيلي هنا...")
+    if c_p:
+        sys_msg = "أنت بروفيسور خبير. اكتب بحثاً تفصيلياً طويلاً جداً مع توثيق شيكاغو (Chicago Style). اسهب في التفاصيل والمصادر."
+        res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": sys_msg}, {"role": "user", "content": c_p}])
+        ans = res.choices[0].message.content
+        
+        # تطبيق السياسة المالية (700 كلمة = 33 محاولة)
+        word_count = len(ans.split())
+        cost = math.ceil((word_count / 700) * 33)
+        if cost < 1: cost = 1
+        
+        if deduct_attempt(cost):
+            run_progress_with_percent()
+            st.markdown(ans)
+            st.download_button("📥 تحميل المخرج (Word)", data=create_word_file(ans), file_name="Research_Output.docx")
+        else: st.error("عذراً، رصيدك لا يكفي لتوليد هذا البحث.")
 
-if up:
-    up.seek(0); doc_v = fitz.open(stream=up.read(), filetype="pdf"); p_count = len(doc_v)
-    att_req, iqd_req = calculate_costs(p_count)
+# 3. الترجمة الأكاديمية (مع قائمة اللغة)
+with tabs[1]:
+    st.subheader("🌍 الترجمة الأكاديمية")
+    t_lang = st.selectbox("ترجم هذا الملف إلى:", ["العربية", "English"], key="t_lang_box")
+    if st.button("بدء الترجمة"):
+        if up and deduct_attempt(10):
+            run_progress_with_percent()
+            res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate strictly to {t_lang}."}])
+            translated = res.choices[0].message.content
+            st.download_button("📥 تحميل المترجم (Word)", data=create_word_file(translated), file_name=f"Translated_{t_lang}.docx")
+        elif not up: st.warning("يرجى رفع ملف أولاً")
 
-    with tabs[1]:
-        st.subheader("🌍 ترجمة أكاديمية احترافية")
-        t_lang = st.selectbox("لغة الترجمة المستهدفة:", ["العربية", "English"], key="t_lang")
-        if st.button("بدء الترجمة"):
-            if deduct_attempt(att_req):
-                m_bar = run_progress_sync()
-                all_text = "\n".join([p.get_text() for p in doc_v])
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Strictly translate to {t_lang}:\n{all_text}"}])
-                m_bar.progress(100, text="اكتملت الترجمة!")
-                st.download_button("📥 تحميل الملف المترجم (Word)", data=create_word_file(res.choices[0].message.content), file_name=f"translated_{t_lang}.docx")
-                time.sleep(1); m_bar.empty()
+# 4. المراجعة العلمية (مع قائمة اللغة)
+with tabs[2]:
+    st.subheader("🎓 مراجعة نقدية علمية")
+    r_lang = st.selectbox("لغة التقرير:", ["العربية", "English"], key="r_lang_box")
+    if st.button("توليد التقرير"):
+        if up and deduct_attempt(10):
+            run_progress_with_percent()
+            res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": f"Extensive academic review in {r_lang}."}])
+            review = res.choices[0].message.content
+            st.markdown(review)
+            st.download_button("📥 تحميل المراجعة (Word)", data=create_word_file(review), file_name="Academic_Review.docx")
+        elif not up: st.warning("يرجى رفع ملف أولاً")
 
-    with tabs[2]:
-        st.subheader("🎓 مراجعة نقدية (مطولة موازية لحجم الملف)")
-        r_lang = st.selectbox("لغة التقرير المطلوبة:", ["العربية", "English"], key="r_lang")
-        if st.button("توليد تقرير المراجعة"):
-            if deduct_attempt(att_req):
-                m_bar = run_progress_sync()
-                all_text = "\n".join([p.get_text() for p in doc_v])
-                # تعليمات المراجعة المطولة الموازية
-                sys_rev = f"You are an academic reviewer. Write a CRITICAL and EXTENSIVE review strictly in {r_lang}. The length of your review MUST match the volume of the original text ({p_count} pages). provide detailed analysis for every section."
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": sys_rev}, {"role": "user", "content": all_text}])
-                answer = res.choices[0].message.content
-                m_bar.progress(100, text="اكتمل التقرير!")
-                st.markdown(answer)
-                st.download_button("📥 تحميل تقرير المراجعة (Word)", data=create_word_file(answer), file_name=f"extended_review_{r_lang}.docx")
-                time.sleep(1); m_bar.empty()
-
-    with tabs[3]:
-        st.subheader("📄 معاينة ومناقشة الملف")
-        p_idx = st.number_input("الصفحة:", 1, p_count, 1)
-        q_p = st.text_input("اسأل عن هذه الصفحة:")
-        if st.button("إرسال السؤال"):
-            if deduct_attempt(1):
-                m_bar = run_progress_sync()
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": f"Context: {doc_v[p_idx-1].get_text()}"}, {"role": "user", "content": q_p}])
-                m_bar.progress(100, text="تم الرد!")
-                st.info(res.choices[0].message.content)
-                st.download_button("📥 تحميل الإجابة (Word)", data=create_word_file(res.choices[0].message.content), file_name="response.docx")
-                time.sleep(1); m_bar.empty()
-        pix = doc_v[p_idx-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
-        st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
+# 5. معاينة الملف (دعم PDF + ملفات Office)
+with tabs[3]:
+    if up:
+        st.write(f"📄 **اسم الملف:** {up.name}")
+        if up.type == "application/pdf":
+            up.seek(0); doc_v = fitz.open(stream=up.read(), filetype="pdf")
+            p_idx = st.number_input("الصفحة:", 1, len(doc_v), 1)
+            pix = doc_v[p_idx-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
+            st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
+        elif up.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            doc = Document(up)
+            text = "\n".join([p.text for p in doc.paragraphs[:20]]) # معاينة أول 20 فقرة
+            st.text_area("معاينة نصية لملف الوورد:", text, height=300)
+        elif up.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+            df = pd.read_excel(up)
+            st.dataframe(df.head(20)) # معاينة أول 20 سطر
+        else:
+            st.success("تم رفع الملف بنجاح وهو جاهز للمعالجة الأكاديمية.")
+    else: st.info("يرجى رفع ملف (PDF أو Office) للمعاينة.")
 
 st.markdown("<br><hr><p style='text-align:center;'>ScholarNode Academy © 2026</p>", unsafe_allow_html=True)
