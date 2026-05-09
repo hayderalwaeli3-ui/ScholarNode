@@ -123,68 +123,73 @@ if up:
     st.session_state.total_pages = len(doc_v)
     up.seek(0)
 
-    tabs = st.tabs(["💬 الشات", "🌍 الترجمة", "🎓 المراجعة", "📄 المعاينة"])
+    tabs = st.tabs(["💬 الشات", "🌍 الترجمة", "🎓 المراجعة الأكاديمية", "📄 المعاينة"])
 
-    with tabs[1]: # تبويب الترجمة المطور بمؤشر تقدم
+    with tabs[1]: 
         st.subheader("🌍 الترجمة الأكاديمية الكاملة")
-        t_lang = st.selectbox("اللغة:", ["العربية", "English"])
+        t_lang = st.selectbox("اللغة:", ["العربية", "English"], key="trans_lang")
         if st.button(f"بدء معالجة {st.session_state.total_pages} صفحة", key="tr_btn"):
             if deduct_attempt(st.session_state.total_pages):
                 progress_bar = st.progress(0)
                 status_text = st.empty()
                 with st.spinner("جاري استخراج وترجمة النص..."):
-                    # المرحلة الأولى: البدء
                     for i in range(1, 40):
                         time.sleep(0.01)
                         progress_bar.progress(i)
                         status_text.text(f"جاري قراءة الملف: {i}%")
-                    
                     up.seek(0)
                     doc = fitz.open(stream=up.read(), filetype="pdf")
                     all_text = "\n".join([p.get_text() for p in doc])
-                    
-                    # المرحلة الثانية: الإرسال للذكاء الاصطناعي
-                    status_text.text("جاري إرسال البيانات للترجمة (يرجى الانتظار)...")
+                    status_text.text("جاري إرسال البيانات للترجمة...")
                     res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Translate this fully to {t_lang}:\n{all_text}"}])
                     final_txt = res.choices[0].message.content
-                    
-                    # المرحلة الثالثة: الاكتمال
                     for i in range(40, 101):
                         time.sleep(0.01)
                         progress_bar.progress(i)
                         status_text.text(f"جاري تحضير ملف Word: {i}%")
-                    
                     st.success("✅ اكتملت الترجمة!")
                     st.download_button("📥 تحميل ملف Word المترجم", data=create_word_file(final_txt), file_name="translated_document.docx")
             else: st.error("رصيدك غير كافٍ")
 
-    with tabs[2]: # تبويب المراجعة المطور بمؤشر تقدم
-        st.subheader("🎓 المراجعة العلمية الأكاديمية")
-        if st.button("بدء المراجعة الشاملة للملف", key="rev_btn"):
+    with tabs[2]: 
+        st.subheader("🎓 المراجعة العلمية النقدية")
+        r_lang = st.selectbox("لغة المراجعة المطلوبة:", ["العربية", "English"], key="rev_lang")
+        if st.button("بدء المراجعة الشاملة والنقد العلمي", key="rev_btn"):
             if deduct_attempt(st.session_state.total_pages):
                 p_bar = st.progress(0)
                 s_text = st.empty()
-                with st.spinner("جاري مراجعة الأوراق العلمية..."):
+                with st.spinner("جاري تحليل الدراسة وتقديم ملاحظات نقدية..."):
                     for i in range(1, 40):
                         time.sleep(0.01)
                         p_bar.progress(i)
-                        s_text.text(f"تحليل النص الأكاديمي: {i}%")
-                    
+                        s_text.text(f"قراءة المحتوى العلمي: {i}%")
                     up.seek(0)
                     doc = fitz.open(stream=up.read(), filetype="pdf")
                     all_text = "\n".join([p.get_text() for p in doc])
                     
-                    s_text.text("جاري المراجعة العلمية واللغوية...")
-                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": f"Review this academic text for quality and language:\n{all_text}"}])
+                    s_text.text("البروفيسور يقوم بمراجعة الملف الآن...")
+                    # التعليمات الجديدة للمراجعة الأكاديمية النقدية
+                    review_prompt = f"""
+                    Act as an expert academic reviewer and professor. Provide a comprehensive academic review of the following text in {r_lang}. 
+                    The review must include:
+                    1. A summary of the study's core idea.
+                    2. Academic evaluation of the methodology and language.
+                    3. Critical scientific remarks and points of weakness or strength.
+                    4. Constructive suggestions for improvement.
+                    5. A final polished version of the text after incorporating improvements.
+                    Text: {all_text}
+                    """
+                    res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": "You are a senior academic reviewer."}, {"role": "user", "content": review_prompt}])
                     final_txt = res.choices[0].message.content
                     
                     for i in range(40, 101):
                         time.sleep(0.01)
                         p_bar.progress(i)
-                        s_text.text(f"تجهيز النسخة النهائية: {i}%")
+                        s_text.text(f"تجهيز تقرير المراجعة: {i}%")
                     
-                    st.success("✅ اكتملت المراجعة!")
-                    st.download_button("📥 تحميل ملف Word المراجع", data=create_word_file(final_txt), file_name="reviewed_document.docx")
+                    st.success("✅ اكتملت المراجعة العلمية!")
+                    st.write(final_txt)
+                    st.download_button("📥 تحميل تقرير المراجعة (Word)", data=create_word_file(final_txt), file_name="academic_review.docx")
             else: st.error("رصيدك غير كافٍ")
 
     with tabs[0]:
