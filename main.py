@@ -210,21 +210,29 @@ if "auth" not in st.session_state:
             st.markdown("<style>[data-testid='stSidebar'], .stSidebar { display: block !important; }</style>", unsafe_allow_html=True)
             st.rerun()
         
-        # كود الطلاب
-        try:
-            df = pd.read_csv(DB_CODES)
-            match = df[(df['code'] == input_cleaned) & (df['status'] == 'Active')]
-            if not match.empty:
-                st.session_state.update({
-                    "auth": True, 
-                    "credit": df.at[match.index[0], 'remaining'], 
-                    "code": input_cleaned
-                })
-                st.rerun()
-            else: 
-                st.error("الكود غير صحيح، يرجى التواصل مع الإدارة أعلاه")
-        except Exception as e:
-            st.error("خطأ في قراءة قاعدة البيانات")
+        # ... (نهاية كود التحقق من الطلاب)
+        else:
+            st.error("الكود غير صحيح")
+            
+    st.stop() # هذا هو السطر الذي تبحث عنه
+
+# --- [ هنا تضع النقطة رقم 3 ] ---
+if st.session_state.get("code") == "HAYDER_2026":
+    st.markdown("""
+        <style>
+            [data-testid="stSidebar"], .stSidebar { 
+                display: block !important; 
+                visibility: visible !important; 
+                width: auto !important; 
+            }
+            header, .stAppHeader { 
+                display: block !important; 
+                visibility: visible !important; 
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+# ثم يكمل بقية الكود (مثلاً st.title("ScholarNode") أو الترحيب)
     
     # 5. التوقف لمنع ظهور المعلومات الداخلية (هذا السطر يحمي القطة و Fronk)
     st.stop()
