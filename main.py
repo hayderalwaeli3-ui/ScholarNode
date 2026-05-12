@@ -146,7 +146,7 @@ if "auth" not in st.session_state:
     </table>
     """, unsafe_allow_html=True)
 
-    # 4. خانة إدخال الكود (تأكد أن الأسطر بالأسفل مزاحة بـ 4 مسافات فقط)
+    # 4. خانة إدخال الكود
     st.markdown("---")
     in_c = st.text_input("🔑 أدخل كود التفعيل للدخول:", type="password", key="secure_login_input")
     
@@ -169,9 +169,8 @@ if "auth" not in st.session_state:
         else: 
             st.error("الكود غير صحيح، يرجى التواصل مع الإدارة أعلاه")
     
-    # التوقف لمنع ظهور المعلومات الداخلية
+    # 5. التوقف لمنع ظهور المعلومات الداخلية
     st.stop()
-
     # 4. خانة إدخال الكود
     st.markdown("---")
     in_c = st.text_input("🔑 إذا كان لديك كود، أدخله هنا للدخول:", type="password", key="secure_login_input")
