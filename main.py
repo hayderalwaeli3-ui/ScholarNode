@@ -1,4 +1,39 @@
 import streamlit as st
+
+# 1. ضبط إعدادات الصفحة لتكون مغلقة افتراضياً ومنع الوميض
+st.set_page_config(page_title="ScholarNode", layout="wide", initial_sidebar_state="collapsed")
+
+# 2. حجب القائمة الجانبية فورياً بالـ CSS قبل تحميل بقية الملف
+st.markdown("""
+    <style>
+        /* إخفاء القائمة الجانبية ومنع أي وميض للقطة أو المعلومات */
+        [data-testid="stSidebar"], section[data-testid="stSidebar"] {
+            display: none !important;
+            width: 0px !important;
+            visibility: hidden !important;
+        }
+        /* إخفاء شريط الأدوات العلوي وزر Deploy */
+        .stDeployButton, #MainMenu, header {
+            visibility: hidden !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# 3. بقية المكتبات
+import pandas as pd
+import os
+import io
+import uuid
+import random
+import string
+from datetime import datetime, timedelta
+from PIL import Image
+import fitz  # PyMuPDF
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt
+from openai import OpenAI
+import time
 import pandas as pd
 import os
 import io
