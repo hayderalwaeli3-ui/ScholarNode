@@ -6,15 +6,22 @@ st.set_page_config(page_title="ScholarNode", layout="wide", initial_sidebar_stat
 # 2. حجب القائمة الجانبية فورياً بالـ CSS قبل تحميل بقية الملف
 st.markdown("""
     <style>
-        /* إخفاء القائمة الجانبية ومنع أي وميض للقطة أو المعلومات */
-        [data-testid="stSidebar"], section[data-testid="stSidebar"] {
+        /* 1. حماية قصوى: منع ظهور السلايد والوميض نهائياً قبل الدخول */
+        [data-testid="stSidebar"], [data-testid="stSidebarNav"], .stSidebar {
             display: none !important;
-            width: 0px !important;
             visibility: hidden !important;
         }
-        /* إخفاء شريط الأدوات العلوي وزر Deploy */
-        .stDeployButton, #MainMenu, header {
+        /* 2. حماية الهاتف: إخفاء الشريط العلوي تماماً (مصدر الوميض) */
+        header, .stAppHeader, [data-testid="stHeader"] {
+            display: none !important;
             visibility: hidden !important;
+        }
+        /* 3. تنظيف الواجهة وجعلها تبدأ من الأعلى */
+        .main .block-container { 
+            padding-top: 0rem !important; 
+        }
+        #MainMenu { 
+            visibility: hidden !important; 
         }
     </style>
 """, unsafe_allow_html=True)
