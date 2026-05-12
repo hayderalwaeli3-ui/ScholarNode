@@ -128,11 +128,26 @@ with st.sidebar:
     if "auth" in st.session_state:
         st.write(f"🎟️ **الكود المفعل:** `{st.session_state.code}`")
         
-        # --- [إضافة خيار الإدارة] ---
-        st.markdown("---")
-        st.markdown("### ⚙️ الإدارة")
-        # ملاحظة: يمكنك تغيير ADMIN123 إلى كودك الخاص للدخول
+       # --- [إضافة خيار الإدارة] ---
         if st.session_state.code == "HAYDER_2026":
+            # إعادة إظهار السلايد الجانبي والشريط العلوي للمدير فقط
+            st.markdown("""
+                <style>
+                    [data-testid="stSidebar"], .stSidebar { 
+                        display: block !important; 
+                        visibility: visible !important; 
+                        width: auto !important; 
+                    }
+                    header, .stAppHeader { 
+                        display: block !important; 
+                        visibility: visible !important; 
+                        height: auto !important; 
+                    }
+                </style>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            st.markdown("### ⚙️ الإدارة")
             if st.button("🛠️ لوحة التحكم في الكروت"):
                 st.session_state.admin_view = not st.session_state.get('admin_view', False)
         
