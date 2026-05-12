@@ -4,13 +4,13 @@ import streamlit as st
 st.set_page_config(page_title="ScholarNode", layout="wide", initial_sidebar_state="collapsed")
 
 # 2. حجب القائمة الجانبية فورياً بالـ CSS قبل تحميل بقية الملف
-# حماية ذكية: تحجب السلايد عن الغرباء فقط وتمنع الوميض
-if "is_admin" not in st.session_state:
+# درع الحماية الذكي - يمنع الوميض للغرباء ويفتح للمدير
+if st.session_state.get("code") != "HAYDER_2026":
     st.markdown("""
         <style>
-            [data-testid="stSidebar"], [data-testid="stSidebarNav"], .stSidebar { display: none !important; }
-            header, .stAppHeader { display: none !important; }
-            .main .block-container { padding-top: 0rem !important; }
+            [data-testid="stSidebar"], .stSidebar, header, .stAppHeader { 
+                display: none !important; 
+            }
         </style>
     """, unsafe_allow_html=True)
 
