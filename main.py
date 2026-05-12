@@ -6,35 +6,28 @@ st.set_page_config(page_title="ScholarNode", layout="wide", initial_sidebar_stat
 # 2. حجب القائمة الجانبية فورياً بالـ CSS قبل تحميل بقية الملف
 st.markdown("""
     <style>
-        /* 1. حجب شامل ونهائي للشريط العلوي والأيقونات */
-        header, [data-testid="stHeader"], .stAppHeader, #MainMenu, button[kind="header"] {
+        /* 1. إخفاء القطة، كلمة Fronk، والنقاط الثلاث نهائياً وبسرعة */
+        header, [data-testid="stHeader"], .stAppHeader, #MainMenu, button[kind="header"], [data-testid="stStatusWidget"] {
             display: none !important;
             visibility: hidden !important;
             opacity: 0 !important;
-            background: transparent !important;
         }
 
-        /* 2. حجب القطة (أيقونة التحميل) في كلا الوضعين */
-        [data-testid="stStatusWidget"], .st-emotion-cache-zq5wmm, .st-emotion-cache-18ni7ve {
-            display: none !important;
-            visibility: hidden !important;
-        }
-
-        /* 3. حجب السلايد الجانبي ومنع الوميض الملون */
+        /* 2. منع السلايد الجانبي من الوميض في الهواتف */
         [data-testid="stSidebar"], .stSidebar {
             display: none !important;
             width: 0px !important;
         }
 
-        /* 4. تعديل المساحة العلوية لتناسب الهاتف */
+        /* 3. إلغاء الحواف العلوية لضمان عدم وجود فراغ أبيض أو أسود */
         .main .block-container {
             padding-top: 0rem !important;
-            margin-top: -50px !important;
+            margin-top: -45px !important;
         }
-        
-        /* 5. منع التمرير الجانبي الذي قد يظهر بياضاً أو سواداً */
-        html, body {
-            overflow-x: hidden;
+
+        /* 4. إخفاء أيقونة التحميل (القطة) حتى في وضع الـ Dark Mode */
+        .st-emotion-cache-zq5wmm, .st-emotion-cache-18ni7ve {
+            display: none !important;
         }
     </style>
 """, unsafe_allow_html=True)
