@@ -228,13 +228,15 @@ if "auth" not in st.session_state:
             st.markdown("<style>[data-testid='stSidebar'], .stSidebar { display: block !important; }</style>", unsafe_allow_html=True)
             st.rerun()
         
-        # ... (نهاية كود التحقق من الطلاب)
+      # ... (نهاية كود التحقق من الطلاب)
         else:
             st.error("الكود غير صحيح")
             
-    st.stop() # هذا هو السطر الذي تبحث عنه
+    # --- هذه هي المنطقة الحرجة ---
+    if "auth" not in st.session_state:
+        st.stop() # نتوقف هنا فقط إذا لم يتم تسجيل الدخول
 
-# --- [ هنا تضع النقطة رقم 3 ] ---
+# --- [ النقطة رقم 3: استعادة السلايد الجانبي ] ---
 if st.session_state.get("code") == "HAYDER_2026":
     st.markdown("""
         <style>
