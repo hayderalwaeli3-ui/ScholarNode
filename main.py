@@ -4,28 +4,15 @@ import streamlit as st
 st.set_page_config(page_title="ScholarNode", layout="wide", initial_sidebar_state="collapsed")
 
 # 2. حجب القائمة الجانبية فورياً بالـ CSS قبل تحميل بقية الملف
-st.markdown("""
-    <style>
-        /* 1. حماية قصوى: منع ظهور السلايد والوميض نهائياً قبل الدخول */
-        [data-testid="stSidebar"], [data-testid="stSidebarNav"], .stSidebar {
-            display: none !important;
-            visibility: hidden !important;
-            width: 0px !important;
-        }
-        /* 2. حماية الهاتف: إخفاء الشريط العلوي والأيقونات التي تومض */
-        header, .stAppHeader, [data-testid="stHeader"], button[kind="header"] {
-            display: none !important;
-            visibility: hidden !important;
-            height: 0px !important;
-        }
-        /* 3. تنظيف الواجهة وجعلها تبدأ من الأعلى تماماً */
-        .main .block-container { 
-            padding-top: 0rem !important; 
-            margin-top: -30px !important;
-        }
-        #MainMenu { visibility: hidden !important; }
-    </style>
-""", unsafe_allow_html=True)
+# حماية ذكية: تحجب السلايد عن الغرباء فقط وتمنع الوميض
+if "is_admin" not in st.session_state:
+    st.markdown("""
+        <style>
+            [data-testid="stSidebar"], [data-testid="stSidebarNav"], .stSidebar { display: none !important; }
+            header, .stAppHeader { display: none !important; }
+            .main .block-container { padding-top: 0rem !important; }
+        </style>
+    """, unsafe_allow_html=True)
 
 # 3. بقية المكتبات
 import pandas as pd
