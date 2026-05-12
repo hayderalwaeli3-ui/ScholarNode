@@ -228,15 +228,15 @@ if "auth" not in st.session_state:
             st.markdown("<style>[data-testid='stSidebar'], .stSidebar { display: block !important; }</style>", unsafe_allow_html=True)
             st.rerun()
         
-      # ... (نهاية كود التحقق من الطلاب)
+     # ... (نهاية كود التحقق من الطلاب)
         else:
             st.error("الكود غير صحيح")
             
-    # --- هذه هي المنطقة الحرجة ---
+    # --- التعديل الجوهري هنا ---
     if "auth" not in st.session_state:
-        st.stop() # نتوقف هنا فقط إذا لم يتم تسجيل الدخول
+        st.stop()  # يتوقف الكود هنا فقط إذا لم يسجل المستخدم دخوله
 
-# --- [ النقطة رقم 3: استعادة السلايد الجانبي ] ---
+# --- [ النقطة رقم 3: إعادة الصلاحيات للمدير ] ---
 if st.session_state.get("code") == "HAYDER_2026":
     st.markdown("""
         <style>
@@ -251,6 +251,11 @@ if st.session_state.get("code") == "HAYDER_2026":
             }
         </style>
     """, unsafe_allow_html=True)
+
+# --- محتوى المنصة الرئيسي (الذي سيظهر الآن) ---
+st.markdown(f'<div class="main-header"><h1>مرحباً دكتور Courage</h1><h2>الرصيد المتاح: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
+
+# هنا تكمل بقية الأسطر الخاصة بالـ tabs و file_uploader كما هي في كودك
 
 # ثم يكمل بقية الكود (مثلاً st.title("ScholarNode") أو الترحيب)
     
