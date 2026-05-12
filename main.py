@@ -110,26 +110,47 @@ with st.sidebar:
     <p style='text-align: center; font-size: 0.8em; color: #666;'>💡 المحاولة الواحدة تعادل ترجمة صفحة كاملة أو سؤال واحد للمستشار.</p>
     """, unsafe_allow_html=True)
 
-# --- بوابة الدخول المعدلة ---
+# --- [تعديل الحماية المطلقة] بوابة الدخول المحصنة ضد الوميض ---
 if "auth" not in st.session_state:
-    st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
-    in_c = st.text_input("أدخل كود التفعيل للدخول:", type="password")
-    if st.button("دخول", use_container_width=True):
-        # 1. التحقق أولاً إذا كان الكود هو كود الإدارة الخاص بك
-        if in_c.strip() == "HAYDER_2026":
-            st.session_state.update({"auth": True, "credit": 9999, "code": "HAYDER_2026"})
-            st.rerun()
-            
-        # 2. إذا لم يكن كود إدارة، يبحث في قاعدة البيانات عن الأكواد العادية
-        df = pd.read_csv(DB_CODES)
-        match = df[(df['code'] == in_c.strip()) & (df['status'] == 'Active')]
-        if not match.empty:
-            st.session_state.update({"auth": True, "credit": df.at[match.index[0], 'remaining'], "code": in_c.strip()})
-            st.rerun()
-        else: 
-            st.error("الكود غير صحيح")
+    # 1. إخفاء القائمة الجانبية (Sidebar) تماماً بالـ CSS طالما لم يتم الدخول
+    st.markdown("""
+        <style>
+            [data-testid="stSidebar"] { display: none !important; }
+            .stDeployButton { display:none !important; }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    # 2. استخدام حاوية فارغة لضمان عدم تحميل أي عناصر أخرى
+    login_container = st.empty()
+    
+    with login_container.container():
+        st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
+        # إدخال الكود مع مفتاح فريد لضمان عدم التعليق
+        in_c = st.text_input("أدخل كود التفعيل للدخول:", type="password", key="secure_login_input")
+        
+        if st.button("دخول المنصة", use_container_width=True):
+            # التحقق من كود الإدارة الخاص بك
+            if in_c.strip() == "HAYDER_2026":
+                st.session_state.update({"auth": True, "credit": 9999, "code": "HAYDER_2026"})
+                login_container.empty() # مسح واجهة الدخول فوراً
+                st.rerun()
+                
+            # التحقق من الأكواد العادية
+            df = pd.read_csv(DB_CODES)
+            match = df[(df['code'] == in_c.strip()) & (df['status'] == 'Active')]
+            if not match.empty:
+                st.session_state.update({
+                    "auth": True, 
+                    "credit": df.at[match.index[0], 'remaining'], 
+                    "code": in_c.strip()
+                })
+                login_container.empty()
+                st.rerun()
+            else: 
+                st.error("الكود غير صحيح")
+    
+    # 3. أمر التوقف الحاسم: يمنع المتصفح من قراءة أي سطر كود أسفل هذا السطر
     st.stop()
-
 # --- قسم لوحة الإدارة (السياسة المالية الجديدة: 100 محاولة لكل 10 آلاف) ---
 if st.session_state.get('admin_view', False):
     st.markdown('<div class="admin-area"><h3>🛠️ إدارة اشتراكات ScholarNode</h3>', unsafe_allow_html=True)
