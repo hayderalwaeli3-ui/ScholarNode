@@ -187,8 +187,14 @@ if "auth" not in st.session_state:
     
     if st.button("دخول المنصة", use_container_width=True):
         input_cleaned = in_c.strip()
-        # كود الإدارة
+       # كود الإدارة (دكتور Courage)
         if input_cleaned == "HAYDER_2026":
+            # إلغاء الحجب وإظهار القائمة الجانبية فوراً للمدير
+            st.markdown("""
+                <style>
+                    [data-testid="stSidebar"] { display: block !important; visibility: visible !important; width: auto !important; }
+                </style>
+            """, unsafe_allow_html=True)
             st.session_state.update({"auth": True, "credit": 9999, "code": "HAYDER_2026"})
             st.rerun()
         
