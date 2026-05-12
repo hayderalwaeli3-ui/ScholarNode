@@ -122,7 +122,7 @@ if "auth" not in st.session_state:
     
     st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
 
-    # 2. معلومات الدفع والتواصل (ثابتة للجميع)
+    # 2. معلومات الدفع والتواصل
     st.markdown("""
     <div style="background-color: #1e3a8a; color: white; padding: 20px; border-radius: 15px; border: 3px solid #facc15; text-align: center; margin-bottom: 20px;">
         <h3 style="color: #facc15; margin-bottom: 10px;">💳 معلومات الدفع وتفعيل الكود</h3>
@@ -152,60 +152,28 @@ if "auth" not in st.session_state:
     
     if st.button("دخول المنصة", use_container_width=True):
         input_cleaned = in_c.strip()
+        # كود الإدارة
         if input_cleaned == "HAYDER_2026":
             st.session_state.update({"auth": True, "credit": 9999, "code": "HAYDER_2026"})
             st.rerun()
         
-        # قراءة قاعدة البيانات والتحقق
-        df = pd.read_csv(DB_CODES)
-        match = df[(df['code'] == input_cleaned) & (df['status'] == 'Active')]
-        if not match.empty:
-            st.session_state.update({
-                "auth": True, 
-                "credit": df.at[match.index[0], 'remaining'], 
-                "code": input_cleaned
-            })
-            st.rerun()
-        else: 
-            st.error("الكود غير صحيح، يرجى التواصل مع الإدارة أعلاه")
-    
-    # 5. التوقف لمنع ظهور المعلومات الداخلية
-    st.stop()
-    # 4. خانة إدخال الكود
-    st.markdown("---")
-    in_c = st.text_input("🔑 إذا كان لديك كود، أدخله هنا للدخول:", type="password", key="secure_login_input")
-    
-    if st.button("دخول المنصة", use_container_width=True):
-        if in_c.strip() == "HAYDER_2026":
-            st.session_state.update({"auth": True, "credit": 9999, "code": "HAYDER_2026"})
-            st.rerun()
-        
-        df = pd.read_csv(DB_CODES)
-        match = df[(df['code'] == in_c.strip()) & (df['status'] == 'Active')]
-        if not match.empty:
-            st.session_state.update({"auth": True, "credit": df.at[match.index[0], 'remaining'], "code": in_c.strip()})
-            st.rerun()
-        else: 
-            st.error("الكود غير صحيح، يرجى التواصل مع الإدارة أعلاه")
-    
-    # 5. التوقف هنا يمنع ظهور أي معلومات داخلية قبل الدخول
-    st.stop()
-                
-            # التحقق من الأكواد العادية
+        # كود الطلاب
+        try:
             df = pd.read_csv(DB_CODES)
-            match = df[(df['code'] == in_c.strip()) & (df['status'] == 'Active')]
+            match = df[(df['code'] == input_cleaned) & (df['status'] == 'Active')]
             if not match.empty:
                 st.session_state.update({
                     "auth": True, 
                     "credit": df.at[match.index[0], 'remaining'], 
-                    "code": in_c.strip()
+                    "code": input_cleaned
                 })
-                login_container.empty()
                 st.rerun()
             else: 
-                st.error("الكود غير صحيح")
+                st.error("الكود غير صحيح، يرجى التواصل مع الإدارة أعلاه")
+        except Exception as e:
+            st.error("خطأ في قراءة قاعدة البيانات")
     
-    # 3. أمر التوقف الحاسم: يمنع المتصفح من قراءة أي سطر كود أسفل هذا السطر
+    # 5. التوقف لمنع ظهور المعلومات الداخلية (هذا السطر يحمي القطة و Fronk)
     st.stop()
 # --- قسم لوحة الإدارة (السياسة المالية الجديدة: 100 محاولة لكل 10 آلاف) ---
 if st.session_state.get('admin_view', False):
