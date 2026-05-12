@@ -259,9 +259,6 @@ st.markdown(f'<div class="main-header"><h1>مرحباً دكتور Courage</h1><
 
 # ثم يكمل بقية الكود (مثلاً st.title("ScholarNode") أو الترحيب)
     
-if st.session_state.get('admin_view', False):
-    st.markdown('<div class="admin-area"><h3>🛠️ إدارة اشتراكات ScholarNode</h3>', unsafe_allow_html=True)
-    # باقي كود الإدارة...
 # --- قسم لوحة الإدارة (السياسة المالية الجديدة: 100 محاولة لكل 10 آلاف) ---
 if st.session_state.get('admin_view', False):
     st.markdown('<div class="admin-area"><h3>🛠️ إدارة اشتراكات ScholarNode</h3>', unsafe_allow_html=True)
