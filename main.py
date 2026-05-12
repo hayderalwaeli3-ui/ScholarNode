@@ -4,15 +4,40 @@ import streamlit as st
 st.set_page_config(page_title="ScholarNode", layout="wide", initial_sidebar_state="collapsed")
 
 # 2. حجب القائمة الجانبية فورياً بالـ CSS قبل تحميل بقية الملف
-# درع الحماية الذكي - يمنع الوميض للغرباء ويفتح للمدير
-if st.session_state.get("code") != "HAYDER_2026":
-    st.markdown("""
-        <style>
-            [data-testid="stSidebar"], .stSidebar, header, .stAppHeader { 
-                display: none !important; 
-            }
-        </style>
-    """, unsafe_allow_html=True)
+st.markdown("""
+    <style>
+        /* 1. حجب شامل ونهائي للشريط العلوي والأيقونات */
+        header, [data-testid="stHeader"], .stAppHeader, #MainMenu, button[kind="header"] {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            background: transparent !important;
+        }
+
+        /* 2. حجب القطة (أيقونة التحميل) في كلا الوضعين */
+        [data-testid="stStatusWidget"], .st-emotion-cache-zq5wmm, .st-emotion-cache-18ni7ve {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        /* 3. حجب السلايد الجانبي ومنع الوميض الملون */
+        [data-testid="stSidebar"], .stSidebar {
+            display: none !important;
+            width: 0px !important;
+        }
+
+        /* 4. تعديل المساحة العلوية لتناسب الهاتف */
+        .main .block-container {
+            padding-top: 0rem !important;
+            margin-top: -50px !important;
+        }
+        
+        /* 5. منع التمرير الجانبي الذي قد يظهر بياضاً أو سواداً */
+        html, body {
+            overflow-x: hidden;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # 3. بقية المكتبات
 import pandas as pd
