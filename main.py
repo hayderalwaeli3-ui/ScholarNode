@@ -110,9 +110,9 @@ with st.sidebar:
     <p style='text-align: center; font-size: 0.8em; color: #666;'>💡 المحاولة الواحدة تعادل ترجمة صفحة كاملة أو سؤال واحد للمستشار.</p>
     """, unsafe_allow_html=True)
 
-# --- [تعديل الحماية + عرض معلومات التواصل] ---
+# --- [بوابة الدخول المحصنة والمعلومات الثابتة] ---
 if "auth" not in st.session_state:
-    # 1. إخفاء القائمة الجانبية تماماً قبل الدخول (لمنع وميض القطة و Fronk)
+    # 1. إخفاء القائمة الجانبية تماماً قبل الدخول
     st.markdown("""
         <style>
             [data-testid="stSidebar"] { display: none !important; }
@@ -122,14 +122,13 @@ if "auth" not in st.session_state:
     
     st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
 
-    # 2. عرض معلومات الدفع والتواصل (ثابتة للجميع)
+    # 2. معلومات الدفع والتواصل (ثابتة للجميع)
     st.markdown("""
     <div style="background-color: #1e3a8a; color: white; padding: 20px; border-radius: 15px; border: 3px solid #facc15; text-align: center; margin-bottom: 20px;">
         <h3 style="color: #facc15; margin-bottom: 10px;">💳 معلومات الدفع وتفعيل الكود</h3>
-        <p style="font-size: 1.2rem; margin: 5px 0;"><b>الاسم:</b> HAYDER Z. JASIM</p>
-        <p style="font-size: 1.2rem; margin: 5px 0;"><b>ماستر كارد الرافدين:</b> 8369719342</p>
-        <p style="font-size: 1.2rem; margin: 5px 0;"><b>رقم الهاتف (واتساب/تليجرام):</b> 07879974395</p>
-        <p style="font-size: 0.9rem; color: #ddd; margin-top: 10px;">يرجى إرسال صورة التحويل على الرقم أعلاه لاستلام كود التفعيل فوراً.</p>
+        <p style="font-size: 1.1rem; margin: 5px 0;"><b>الاسم:</b> HAYDER Z. JASIM</p>
+        <p style="font-size: 1.1rem; margin: 5px 0;"><b>ماستر كارد الرافدين:</b> 8369719342</p>
+        <p style="font-size: 1.1rem; margin: 5px 0;"><b>رقم الهاتف (تفعيل):</b> 07879974395</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -146,6 +145,32 @@ if "auth" not in st.session_state:
         <tr style='background-color: #fff3cd;'><td><b>100,000</b></td><td><b>1,000 محاولة</b></td></tr>
     </table>
     """, unsafe_allow_html=True)
+
+    # 4. خانة إدخال الكود (تأكد أن الأسطر بالأسفل مزاحة بـ 4 مسافات فقط)
+    st.markdown("---")
+    in_c = st.text_input("🔑 أدخل كود التفعيل للدخول:", type="password", key="secure_login_input")
+    
+    if st.button("دخول المنصة", use_container_width=True):
+        input_cleaned = in_c.strip()
+        if input_cleaned == "HAYDER_2026":
+            st.session_state.update({"auth": True, "credit": 9999, "code": "HAYDER_2026"})
+            st.rerun()
+        
+        # قراءة قاعدة البيانات والتحقق
+        df = pd.read_csv(DB_CODES)
+        match = df[(df['code'] == input_cleaned) & (df['status'] == 'Active')]
+        if not match.empty:
+            st.session_state.update({
+                "auth": True, 
+                "credit": df.at[match.index[0], 'remaining'], 
+                "code": input_cleaned
+            })
+            st.rerun()
+        else: 
+            st.error("الكود غير صحيح، يرجى التواصل مع الإدارة أعلاه")
+    
+    # التوقف لمنع ظهور المعلومات الداخلية
+    st.stop()
 
     # 4. خانة إدخال الكود
     st.markdown("---")
