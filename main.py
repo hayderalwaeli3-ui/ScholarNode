@@ -10,19 +10,20 @@ st.markdown("""
         [data-testid="stSidebar"], [data-testid="stSidebarNav"], .stSidebar {
             display: none !important;
             visibility: hidden !important;
+            width: 0px !important;
         }
-        /* 2. حماية الهاتف: إخفاء الشريط العلوي تماماً (مصدر الوميض) */
-        header, .stAppHeader, [data-testid="stHeader"] {
+        /* 2. حماية الهاتف: إخفاء الشريط العلوي والأيقونات التي تومض */
+        header, .stAppHeader, [data-testid="stHeader"], button[kind="header"] {
             display: none !important;
             visibility: hidden !important;
+            height: 0px !important;
         }
-        /* 3. تنظيف الواجهة وجعلها تبدأ من الأعلى */
+        /* 3. تنظيف الواجهة وجعلها تبدأ من الأعلى تماماً */
         .main .block-container { 
             padding-top: 0rem !important; 
+            margin-top: -30px !important;
         }
-        #MainMenu { 
-            visibility: hidden !important; 
-        }
+        #MainMenu { visibility: hidden !important; }
     </style>
 """, unsafe_allow_html=True)
 
