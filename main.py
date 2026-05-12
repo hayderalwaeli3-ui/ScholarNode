@@ -110,9 +110,9 @@ with st.sidebar:
     <p style='text-align: center; font-size: 0.8em; color: #666;'>💡 المحاولة الواحدة تعادل ترجمة صفحة كاملة أو سؤال واحد للمستشار.</p>
     """, unsafe_allow_html=True)
 
-# --- [تعديل الحماية المطلقة] بوابة الدخول المحصنة ضد الوميض ---
+# --- [تعديل الحماية + عرض معلومات التواصل] ---
 if "auth" not in st.session_state:
-    # 1. إخفاء القائمة الجانبية (Sidebar) تماماً بالـ CSS طالما لم يتم الدخول
+    # 1. إخفاء القائمة الجانبية تماماً قبل الدخول (لمنع وميض القطة و Fronk)
     st.markdown("""
         <style>
             [data-testid="stSidebar"] { display: none !important; }
@@ -120,20 +120,52 @@ if "auth" not in st.session_state:
         </style>
     """, unsafe_allow_html=True)
     
-    # 2. استخدام حاوية فارغة لضمان عدم تحميل أي عناصر أخرى
-    login_container = st.empty()
+    st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
+
+    # 2. عرض معلومات الدفع والتواصل (ثابتة للجميع)
+    st.markdown("""
+    <div style="background-color: #1e3a8a; color: white; padding: 20px; border-radius: 15px; border: 3px solid #facc15; text-align: center; margin-bottom: 20px;">
+        <h3 style="color: #facc15; margin-bottom: 10px;">💳 معلومات الدفع وتفعيل الكود</h3>
+        <p style="font-size: 1.2rem; margin: 5px 0;"><b>الاسم:</b> HAYDER Z. JASIM</p>
+        <p style="font-size: 1.2rem; margin: 5px 0;"><b>ماستر كارد الرافدين:</b> 8369719342</p>
+        <p style="font-size: 1.2rem; margin: 5px 0;"><b>رقم الهاتف (واتساب/تليجرام):</b> 07879974395</p>
+        <p style="font-size: 0.9rem; color: #ddd; margin-top: 10px;">يرجى إرسال صورة التحويل على الرقم أعلاه لاستلام كود التفعيل فوراً.</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    with login_container.container():
-        st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
-        # إدخال الكود مع مفتاح فريد لضمان عدم التعليق
-        in_c = st.text_input("أدخل كود التفعيل للدخول:", type="password", key="secure_login_input")
+    # 3. عرض جدول فئات الكروت
+    st.markdown("### 🏷️ جدول فئات الكروت المحدثة")
+    st.markdown("""
+    <table class="price-table">
+        <tr><th>الفئة (دينار عراقي)</th><th>عدد المحاولات</th></tr>
+        <tr><td>10,000</td><td>100 محاولة</td></tr>
+        <tr><td>20,000</td><td>200 محاولة</td></tr>
+        <tr><td>30,000</td><td>300 محاولة</td></tr>
+        <tr><td>40,000</td><td>400 محاولة</td></tr>
+        <tr><td>50,000</td><td>500 محاولة</td></tr>
+        <tr style='background-color: #fff3cd;'><td><b>100,000</b></td><td><b>1,000 محاولة</b></td></tr>
+    </table>
+    """, unsafe_allow_html=True)
+
+    # 4. خانة إدخال الكود
+    st.markdown("---")
+    in_c = st.text_input("🔑 إذا كان لديك كود، أدخله هنا للدخول:", type="password", key="secure_login_input")
+    
+    if st.button("دخول المنصة", use_container_width=True):
+        if in_c.strip() == "HAYDER_2026":
+            st.session_state.update({"auth": True, "credit": 9999, "code": "HAYDER_2026"})
+            st.rerun()
         
-        if st.button("دخول المنصة", use_container_width=True):
-            # التحقق من كود الإدارة الخاص بك
-            if in_c.strip() == "HAYDER_2026":
-                st.session_state.update({"auth": True, "credit": 9999, "code": "HAYDER_2026"})
-                login_container.empty() # مسح واجهة الدخول فوراً
-                st.rerun()
+        df = pd.read_csv(DB_CODES)
+        match = df[(df['code'] == in_c.strip()) & (df['status'] == 'Active')]
+        if not match.empty:
+            st.session_state.update({"auth": True, "credit": df.at[match.index[0], 'remaining'], "code": in_c.strip()})
+            st.rerun()
+        else: 
+            st.error("الكود غير صحيح، يرجى التواصل مع الإدارة أعلاه")
+    
+    # 5. التوقف هنا يمنع ظهور أي معلومات داخلية قبل الدخول
+    st.stop()
                 
             # التحقق من الأكواد العادية
             df = pd.read_csv(DB_CODES)
