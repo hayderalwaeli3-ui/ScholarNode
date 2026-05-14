@@ -261,14 +261,19 @@ if st.session_state.get('admin_view', False):
     admin_tab1, admin_tab2 = st.tabs(["🎫 إصدار كروت جديدة", "📋 كشف الأكواد"])
     
     with admin_tab1:
-        st.info("💡 السياسة الحالية: 100 محاولة لكل 10,000 دينار عراقي")
+        st.info("💡 السياسة الحالية: 1,000=10 | 5,000=50 | 10,000=100 محاولة")
         
         # 1. اختيار قيمة الكارت لتحديد المحاولات تلقائياً
-        card_value = st.selectbox("اختر قيمة الكارت (دينار عراقي):", 
-                                 [10000, 20000, 30000, 40000, 50000, 100000], 
+      card_value = st.selectbox("💰 اختر قيمة الكارت (دينار عراقي):",
+                         [1000, 5000, 10000, 20000, 30000, 40000, 50000, 100000],
                                  format_func=lambda x: f"{x:,} دينار")
         
         # 2. الحسبة الآلية للمحاولات (القيمة / 100)
+       if card_value == 1000:
+        auto_credit = 10
+    elif card_value == 5000:
+        auto_credit = 50
+    else:
         auto_credit = int(card_value / 100)
         
         col_gen1, col_gen2 = st.columns([2, 1])
