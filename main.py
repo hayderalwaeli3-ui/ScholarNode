@@ -259,8 +259,8 @@ st.markdown(f'<div class="main-header"><h1>مرحباً دكتور Courage</h1><
 if st.session_state.get('admin_view', False):
     st.markdown('<div class="admin-area"><h3>🛠️ إدارة اشتراكات ScholarNode</h3>', unsafe_allow_html=True)
     admin_tab1, admin_tab2 = st.tabs(["🎫 إصدار كروت جديدة", "📋 كشف الأكواد"])
-    
-with admin_tab1:
+
+    with admin_tab1:
         st.info("💡 السياسة الحالية: 1,000=10 | 5,000=50 | 10,000=100 محاولة")
 
         # 1. اختيار قيمة الكارت
@@ -291,7 +291,6 @@ with admin_tab1:
         with col_gen1:
             c_new = st.text_input("🔑 كود التفعيل:", value=st.session_state.generated_code)
             
-        # الرصيد يظهر تلقائياً بناءً على السعر المختار
         c_credit = st.number_input("🎟️ الرصيد الممنوح (محاولات):", min_value=1, value=auto_credit)
         
         if st.button("✅ تفعيل وحفظ الكود في قاعدة البيانات"):
