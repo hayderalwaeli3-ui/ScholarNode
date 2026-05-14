@@ -260,27 +260,27 @@ if st.session_state.get('admin_view', False):
     st.markdown('<div class="admin-area"><h3>🛠️ إدارة اشتراكات ScholarNode</h3>', unsafe_allow_html=True)
     admin_tab1, admin_tab2 = st.tabs(["🎫 إصدار كروت جديدة", "📋 كشف الأكواد"])
     
-    with admin_tab1:
-    st.info("💡 السياسة الحالية: 1,000=10 | 5,000=50 | 10,000=100 محاولة")
+with admin_tab1:
+        st.info("💡 السياسة الحالية: 1,000=10 | 5,000=50 | 10,000=100 محاولة")
 
-    # 1. اختيار قيمة الكارت
-    card_value = st.selectbox("💰 اختر قيمة الكارت (دينار عراقي):",
-                             [1000, 5000, 10000, 20000, 30000, 40000, 50000, 100000],
-                             format_func=lambda x: f"{x:,} دينار")
+        # 1. اختيار قيمة الكارت
+        card_value = st.selectbox("💰 اختر قيمة الكارت (دينار عراقي):",
+                                 [1000, 5000, 10000, 20000, 30000, 40000, 50000, 100000],
+                                 format_func=lambda x: f"{x:,} دينار")
 
-    # 2. الحسبة الآلية للمحاولات
-    if card_value == 1000:
-        auto_credit = 10
-    elif card_value == 5000:
-        auto_credit = 50
-    else:
-        auto_credit = int(card_value / 100)
+        # 2. الحسبة الآلية للمحاولات
+        if card_value == 1000:
+            auto_credit = 10
+        elif card_value == 5000:
+            auto_credit = 50
+        else:
+            auto_credit = int(card_value / 100)
 
-    # 3. رسم الواجهة (خارج جملة else لضمان عمل الموقع)
-    col_gen1, col_gen2 = st.columns([2, 1])
-    
-    if "generated_code" not in st.session_state:
-        st.session_state.generated_code = ""
+        # 3. رسم الواجهة (لضمان عمل الموقع خارج جملة else)
+        col_gen1, col_gen2 = st.columns([2, 1])
+        
+        if "generated_code" not in st.session_state:
+            st.session_state.generated_code = ""
             
         with col_gen2:
             if st.button("🔄 توليد كود عشوائي"):
