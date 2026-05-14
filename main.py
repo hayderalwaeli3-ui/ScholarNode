@@ -151,24 +151,9 @@ with st.sidebar:
             st.markdown("### ⚙️ الإدارة")
             if st.button("🛠️ لوحة التحكم في الكروت"):
                 st.session_state.admin_view = not st.session_state.get('admin_view', False)
-        
-st.markdown("### 🏷️ جدول فئات الكروت المحدثة")
-
-# بيانات الجدول
-price_data = {
-    "الفئة (دينار عراقي)": ["1,000", "5,000", "10,000", "20,000", "30,000", "40,000", "50,000", "100,000"],
-    "عدد المحاولات": ["10 محاولات", "50 محاولة", "100 محاولة", "200 محاولة", "300 محاولة", "400 محاولة", "500 محاولة", "1,000 محاولة"]
-}
-
-# تصغير وتوسيط الجدول باستخدام الأعمدة
-col_t1, col_t2, col_t3 = st.columns([1, 2, 1])
-with col_t2:
-    st.table(price_data)
-    st.caption("💡 المحاولة الواحدة تعادل ترجمة صفحة كاملة أو سؤال واحد للمستشار.")
-
-# --- [بوابة الدخول المحصنة والمعلومات الثابتة] ---
+    # --- [بوابة الدخول والمعلومات] ---
 if "auth" not in st.session_state:
-    # 1. إخفاء القائمة الجانبية تماماً قبل الدخول
+    # 1. إخفاء القائمة الجانبية وتنسيق العنوان
     st.markdown("""
         <style>
             [data-testid="stSidebar"] { display: none !important; }
@@ -180,29 +165,29 @@ if "auth" not in st.session_state:
 
     # 2. معلومات الدفع والتواصل
     st.markdown("""
-    <div style="background-color: #1e3a8a; color: white; padding: 20px; border-radius: 15px; border: 3px solid #facc15; text-align: center; margin-bottom: 20px;">
+    <div style="background-color: #1e3a8a; color: white; padding: 20px; border-radius: 15px; border: 3px solid #facc15; text-align: center; margin-bottom: 25px;">
         <h3 style="color: #facc15; margin-bottom: 10px;">💳 معلومات الدفع وتفعيل الكود</h3>
         <p style="font-size: 1.1rem; margin: 5px 0;"><b>الاسم:</b> HAYDER Z. JASIM</p>
         <p style="font-size: 1.1rem; margin: 5px 0;"><b>ماستر كارد الرافدين:</b> 8369719342</p>
         <p style="font-size: 1.1rem; margin: 5px 0;"><b>رقم الهاتف (تفعيل):</b> 07879974395</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # 3. عرض جدول فئات الكروت
-    st.markdown("### 🏷️ جدول فئات الكروت المحدثة")
-    st.markdown("""
-    <table class="price-table">
-        <tr><th>الفئة (دينار عراقي)</th><th>عدد المحاولات</th></tr>
-        <tr><td>10,000</td><td>100 محاولة</td></tr>
-        <tr><td>20,000</td><td>200 محاولة</td></tr>
-        <tr><td>30,000</td><td>300 محاولة</td></tr>
-        <tr><td>40,000</td><td>400 محاولة</td></tr>
-        <tr><td>50,000</td><td>500 محاولة</td></tr>
-        <tr style='background-color: #fff3cd;'><td><b>100,000</b></td><td><b>1,000 محاولة</b></td></tr>
-    </table>
-    """, unsafe_allow_html=True)
 
-   # 4. خانة إدخال الكود
+    # 3. عرض جدول الفئات (نسخة واحدة فقط، مصغرة ومتوسطة)
+    st.markdown("<h3 style='text-align: center;'>🏷️ جدول فئات الكروت المحدثة</h3>", unsafe_allow_html=True)
+    
+    price_data = {
+        "الفئة (دينار عراقي)": ["1,000", "5,000", "10,000", "20,000", "30,000", "40,000", "50,000", "100,000"],
+        "عدد المحاولات": ["10 محاولات", "50 محاولة", "100 محاولة", "200 محاولة", "300 محاولة", "400 محاولة", "500 محاولة", "1,000 محاولة"]
+    }
+
+    col_t1, col_t2, col_t3 = st.columns([1, 2, 1])
+    with col_t2:
+        st.table(price_data)
+        st.caption("💡 المحاولة الواحدة تعادل ترجمة صفحة كاملة أو سؤال واحد للمستشار.")
+    
+    st.divider()
+    # 4. خانة إدخال الكود
     st.markdown("---")
     in_c = st.text_input("🔑 أدخل كود التفعيل للدخول:", type="password", key="secure_login_input")
     
