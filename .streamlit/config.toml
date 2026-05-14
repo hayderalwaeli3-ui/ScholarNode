@@ -1,2 +1,6 @@
 [client]
-toolbarMode = "minimal"
+toolbarMode = "hidden"
+showErrorDetails = false
+
+[browser]
+gatherUsageStats = false
