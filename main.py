@@ -311,7 +311,7 @@ with admin_tab1:
             else:
                 st.error("⚠️ يرجى توليد الكود أولاً")
 
-with admin_tab2:
+    with admin_tab2:
         st.dataframe(pd.read_csv(DB_CODES), use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 # --- الواجهة الرئيسية للمنصة ---
