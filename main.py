@@ -276,7 +276,7 @@ with admin_tab1:
         else:
             auto_credit = int(card_value / 100)
 
-        # 3. رسم الواجهة (لضمان عمل الموقع خارج جملة else)
+        # 3. رسم الواجهة
         col_gen1, col_gen2 = st.columns([2, 1])
         
         if "generated_code" not in st.session_state:
@@ -284,15 +284,15 @@ with admin_tab1:
             
         with col_gen2:
             if st.button("🔄 توليد كود عشوائي"):
-                # توليد كود أطول قليلاً للأمان
+                import random, string
                 random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
                 st.session_state.generated_code = f"SN-{random_suffix}"
         
         with col_gen1:
-            c_new = st.text_input("كود التفعيل:", value=st.session_state.generated_code)
+            c_new = st.text_input("🔑 كود التفعيل:", value=st.session_state.generated_code)
             
         # الرصيد يظهر تلقائياً بناءً على السعر المختار
-        c_credit = st.number_input("الرصيد الممنوح (محاولات):", min_value=1, value=auto_credit)
+        c_credit = st.number_input("🎟️ الرصيد الممنوح (محاولات):", min_value=1, value=auto_credit)
         
         if st.button("✅ تفعيل وحفظ الكود في قاعدة البيانات"):
             if c_new:
@@ -306,11 +306,11 @@ with admin_tab1:
                     "price_point": f"{card_value:,} IQD"
                 }])
                 pd.concat([df, new_entry], ignore_index=True).to_csv(DB_CODES, index=False)
-                st.success(f"تم بنجاح! كود بقيمة {card_value:,} د.ع برصيد {c_credit} محاولة.")
+                st.success(f"✔️ تم بنجاح! كود بقيمة {card_value:,} د.ع برصيد {c_credit} محاولة.")
                 st.session_state.generated_code = "" 
             else:
-                st.error("يرجى توليد الكود أولاً")
-                
+                st.error("⚠️ يرجى توليد الكود أولاً")
+
     with admin_tab2:
         st.dataframe(pd.read_csv(DB_CODES), use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
