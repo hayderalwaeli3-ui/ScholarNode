@@ -6,38 +6,24 @@ st.set_page_config(page_title="ScholarNode", layout="wide", initial_sidebar_stat
 # 2. حجب القائمة الجانبية فورياً بالـ CSS قبل تحميل بقية الملف
 st.markdown("""
     <style>
-        /* 1. الحجب الكلي والنهائي للشريط العلوي والأيقونات والنقاط الثلاث */
-        header, [data-testid="stHeader"], .stAppHeader, #MainMenu, 
-        button[kind="header"], [data-testid="stStatusWidget"], 
+        /* إخفاء كلي وشامل لكل شيء فوق المحتوى */
+        header, [data-testid="stHeader"], .stAppHeader, 
+        [data-testid="stToolbar"], #MainMenu, button[kind="header"] {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0px !important;
+        }
+        
+        /* إخفاء القطة والنقاط الثلاث بأسمائها البرمجية الجديدة */
         .st-emotion-cache-zq5wmm, .st-emotion-cache-18ni7ve, 
-        .st-emotion-cache-yf7105, [data-testid="stToolbar"] {
+        .st-emotion-cache-yf7105, .st-emotion-cache-1647ite {
             display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-            height: 0 !important;
-            pointer-events: none !important;
         }
 
-        /* 2. إخفاء السلايد الجانبي ومنع ظهوره للحظة عند التحميل */
-        [data-testid="stSidebar"], .stSidebar {
-            display: none !important;
-            width: 0px !important;
-            visibility: hidden !important;
-        }
-
-        /* 3. إلغاء أي هوامش علوية قد تظهر بياضاً أو سواداً */
+        /* رفع المحتوى للأعلى وتغطية مكان الشريط تماماً */
         .main .block-container {
             padding-top: 0rem !important;
-            margin-top: -65px !important;
-        }
-
-        /* 4. تنعيم ظهور الصفحة لإخفاء أي وميض تقني (Fade In) */
-        @keyframes fadeInPage {
-            0% { opacity: 0; }
-            100% { opacity: 1; }
-        }
-        .stApp {
-            animation: fadeInPage 0.4s ease-in-out;
+            margin-top: -70px !important;
         }
     </style>
 """, unsafe_allow_html=True)
