@@ -170,19 +170,19 @@ with st.sidebar:
             st.markdown("### ⚙️ الإدارة")
             if st.button("🛠️ لوحة التحكم في الكروت"):
                 st.session_state.admin_view = not st.session_state.get('admin_view', False)
-    # --- [بوابة الدخول والمعلومات] ---
+# --- [1. بوابة الدخول والمعلومات - تظهر فقط قبل تسجيل الدخول] ---
 if "auth" not in st.session_state:
-    # 1. إخفاء القائمة الجانبية وتنسيق العنوان
+    # تنسيق صفحة الدخول (إظهار السلايد بار للجدول فقط)
     st.markdown("""
         <style>
-            [data-testid="stSidebar"] { display: none !important; }
+            [data-testid="stSidebar"] { display: block !important; }
             .stDeployButton { display:none !important; }
         </style>
     """, unsafe_allow_html=True)
     
     st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
 
-# 1. القائمة الجانبية (تظهر فقط قبل تسجيل الدخول)
+    # معلومات الدفع والجدول الملون في الجانب
     with st.sidebar:
         st.markdown(f"""
         <div style="background-color: #f0f9ff; color: #1e3a8a; padding: 15px; border-radius: 12px; border: 2px solid #ef4444; direction: rtl; text-align: right;">
@@ -214,63 +214,30 @@ if "auth" not in st.session_state:
         """, unsafe_allow_html=True)
         st.markdown("---")
 
-    # 2. واجهة الدخول الرئيسية (في وسط الصفحة)
+    # واجهة الدخول في وسط الصفحة
     st.markdown('<div style="text-align: center;"><h3>🔑 بوابة الدخول الآمن</h3></div>', unsafe_allow_html=True)
-    
-    # تعريف خانة إدخال الكود "مرة واحدة فقط"
     in_c = st.text_input("أدخل كود التفعيل للدخول:", type="password", key="main_login_input")
 
     if st.button("دخول المنصة", use_container_width=True):
         input_cleaned = in_c.strip()
-        
-        # خوارزمية التحقق الأساسية (دكتور Courage)
         if input_cleaned == "HAYDER_2026":
-            st.session_state.update({
-                "auth": True, 
-                "is_admin": True, 
-                "credit": 9999, 
-                "code": "HAYDER_2026"
-            })
-            # كسر حماية السلايد بار للمدير
-            st.markdown("<style>[data-testid='stSidebar'], .stSidebar { display: block !important; visibility: visible !important; }</style>", unsafe_allow_html=True)
+            st.session_state.update({"auth": True, "is_admin": True, "credit": 9999, "code": "HAYDER_2026"})
             st.rerun()
-        
-        # هنا يمكنك إضافة خوارزمية التحقق من الأكواد الأخرى (Database)
-     # ... (نهاية كود التحقق من الطلاب)
+        # هنا يمكنك إضافة التحقق من الأكواد الأخرى (Database) كما كانت لديك
         else:
             st.error("الكود غير صحيح")
             
-    # --- التعديل الجوهري هنا ---
-    if "auth" not in st.session_state:
-        st.stop()  # يتوقف الكود هنا فقط إذا لم يسجل المستخدم دخوله
+    st.stop() # هذا أهم سطر: يمنع ظهور أي شيء تحت هذه النقطة قبل الدخول
 
-# --- [ النقطة رقم 3: إعادة الصلاحيات للمدير ] ---
+# --- [2. بعد تسجيل الدخول بنجاح] ---
+# إعادة الصلاحيات للمدير (إظهار السلايد بار لخيارات الإدارة)
 if st.session_state.get("code") == "HAYDER_2026":
-    st.markdown("""
-        <style>
-            [data-testid="stSidebar"], .stSidebar { 
-                display: block !important; 
-                visibility: visible !important; 
-                width: auto !important; 
-            }
-            header, .stAppHeader { 
-                display: block !important; 
-                visibility: visible !important; 
-            }
-        </style>
-    """, unsafe_allow_html=True)
+    st.markdown("<style>[data-testid='stSidebar'] { display: block !important; }</style>", unsafe_allow_html=True)
 
-# --- محتوى المنصة الرئيسي (الذي سيظهر الآن) ---
+# رسالة الترحيب تظهر "مرة واحدة فقط" هنا
 st.markdown(f'<div class="main-header"><h1>مرحباً دكتور Courage</h1><h2>الرصيد المتاح: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
 
-# هنا تكمل بقية الأسطر الخاصة بالـ tabs و file_uploader كما هي في كودك
-
-# ثم يكمل بقية الكود (مثلاً st.title("ScholarNode") أو الترحيب)
-    
-# --- قسم لوحة الإدارة (السياسة المالية الجديدة: 100 محاولة لكل 10 آلاف) ---
-if st.session_state.get('admin_view', False):
-    st.markdown('<div class="admin-area"><h3>🛠️ إدارة اشتراكات ScholarNode</h3>', unsafe_allow_html=True)
-    admin_tab1, admin_tab2 = st.tabs(["🎫 إصدار كروت جديدة", "📋 كشف الأكواد"])
+# أكمل بقية كود المنصة (الـ Tabs، الـ File Uploader، ولوحة الإدارة) من هنا...
 
     with admin_tab1:
         st.info("💡 السياسة الحالية: 1,000=10 | 5,000=50 | 10,000=100 محاولة")
