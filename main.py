@@ -126,9 +126,6 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    if "auth" in st.session_state:
-        st.write(f"🎟️ **الكود المفعل:** `{st.session_state.code}`")
-        
        # --- [إضافة خيار الإدارة] ---
         if st.session_state.code == "HAYDER_2026":
             # إعادة إظهار السلايد الجانبي والشريط العلوي للمدير فقط
