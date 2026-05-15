@@ -213,13 +213,14 @@ if "auth" not in st.session_state:
         </table>
         """, unsafe_allow_html=True)
 
-    # 2. فاصل بسيط قبل خانة الكود
-    st.markdown("---")
-    
-        # 2. خانة إدخال الكود (ستبقى في الوسط كما أردت)
+# نهاية الجدول (تأكد أن هذا السطر يتبع محاذاة if "auth" not in)
         st.markdown("---")
-    # 4. خانة إدخال الكود
-    st.markdown("---")
+
+        # خانة إدخال الكود (ستبقى في الوسط)
+        in_c = st.text_input("🔑 أدخل كود التفعيل للدخول:", type="password", key="secure_login_input")
+
+        if st.button("دخول المنصة", use_container_width=True):
+            input_cleaned = in_c.strip()
     in_c = st.text_input("🔑 أدخل كود التفعيل للدخول:", type="password", key="secure_login_input")
     
     if st.button("دخول المنصة", use_container_width=True):
