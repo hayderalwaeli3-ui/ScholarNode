@@ -184,7 +184,7 @@ if "auth" not in st.session_state:
 
 # 1. القائمة الجانبية (داخل صفحة الدخول فقط)
         # تأكد أن السطر التالي يبدأ من أقصى اليمين بمحاذاة السطر 183
-        with st.sidebar:
+    with st.sidebar:
             st.markdown(f"""
             <div style="background-color: #f0f9ff; color: #1e3a8a; padding: 15px; border-radius: 12px; border: 2px solid #ef4444; direction: rtl; text-align: right;">
                 <h3 style="color: #ef4444; margin-top: 0; font-size: 1.1rem;">🏦 معلومات الدفع</h3>
