@@ -117,6 +117,7 @@ st.markdown("""
 
 # --- القائمة الجانبية (Sidebar) ---
 with st.sidebar:
+    # 1. معلومات الحساب والدعم (ثابتة)
     st.markdown("### 🏦 معلومات الحساب والدعم")
     st.markdown(f"""
     <div class="payment-box">
@@ -125,24 +126,43 @@ with st.sidebar:
         📞 <b>رقم الهاتف (تفعيل):</b><br> 07879974395
     </div>
     """, unsafe_allow_html=True)
-if "auth" in st.session_state:
-            st.write(f"🎟️ **الكود المفعل:** `{st.session_state.code}`")
-            
-            # --- [إضافة خيار الإدارة] --- (يجب أن يكون تحت st.write مباشرة)
-            if st.session_state.code == "HAYDER_2026":
-                # إعادة إظهار السلايد الجانبي والشريط العلوي للمدير فقط
-                st.markdown("""
-                    <style>
-                    [data-testid="stSidebar"], .stSidebar { 
-                        display: block !important; 
-                        visibility: visible !important; 
-                        width: auto !important; 
-                    }
-                    header, .stAppHeader { 
-                        display: block !important; 
-                        visibility: visible !important; 
-                        height: auto !important; 
-                    }
+    
+    st.markdown("---")
+
+    # 2. جدول فئات الاشتراك والمحاولات (الجديد)
+    st.markdown("### 🎫 فئات كروت الاشتراك")
+    subscription_plans = [
+        {"الفئة": "1,000 دينار", "المحاولات": "10 محاولات"},
+        {"الفئة": "5,000 دينار", "المحاولات": "50 محاولة"},
+        {"الفئة": "10,000 دينار", "المحاولات": "100 محاولة"},
+        {"الفئة": "20,000 دينار", "المحاولات": "200 محاولة"},
+        {"الفئة": "30,000 دينار", "المحاولات": "300 محاولة"},
+        {"الفئة": "40,000 دينار", "المحاولات": "400 محاولة"},
+        {"الفئة": "50,000 دينار", "المحاولات": "500 محاولة"},
+        {"الفئة": "100,000 دينار", "المحاولات": "1000 محاولة"}
+    ]
+    st.table(subscription_plans)
+    
+    st.markdown("---")
+
+    # 3. نظام التحقق والتعرف على الكود المفعل
+    if "auth" in st.session_state:
+        st.write(f"🎟️ **الكود المفعل:** `{st.session_state.code}`")
+        
+        # --- [إضافة خيار الإدارة] ---
+        if st.session_state.code == "HAYDER_2026":
+            st.markdown("""
+                <style>
+                [data-testid="stSidebar"], .stSidebar { 
+                    display: block !important; 
+                    visibility: visible !important; 
+                    width: auto !important; 
+                }
+                header, .stAppHeader { 
+                    display: block !important; 
+                    visibility: visible !important; 
+                    height: auto !important; 
+                }
                 </style>
             """, unsafe_allow_html=True)
             
