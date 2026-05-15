@@ -182,7 +182,7 @@ if "auth" not in st.session_state:
     
     st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
 
-# 1. القائمة الجانبية (تظهر فقط في صفحة الدخول)
+# 1. القائمة الجانبية (تظهر فقط قبل تسجيل الدخول)
     with st.sidebar:
         st.markdown(f"""
         <div style="background-color: #f0f9ff; color: #1e3a8a; padding: 15px; border-radius: 12px; border: 2px solid #ef4444; direction: rtl; text-align: right;">
@@ -212,21 +212,18 @@ if "auth" not in st.session_state:
             <tr><td>100,000</td><td>1000 محاولة</td></tr>
         </table>
         """, unsafe_allow_html=True)
-
-# نهاية الجدول (تأكد أن هذا السطر يتبع محاذاة if "auth" not in)
         st.markdown("---")
 
-        # خانة إدخال الكود (ستبقى في الوسط)
-        in_c = st.text_input("🔑 أدخل كود التفعيل للدخول:", type="password", key="secure_login_input")
-
-        if st.button("دخول المنصة", use_container_width=True):
-            input_cleaned = in_c.strip()
-    in_c = st.text_input("🔑 أدخل كود التفعيل للدخول:", type="password", key="secure_login_input")
+    # 2. واجهة الدخول الرئيسية (في وسط الصفحة)
+    st.markdown('<div style="text-align: center;"><h3>🔑 بوابة الدخول الآمن</h3></div>', unsafe_allow_html=True)
     
+    # تعريف خانة إدخال الكود "مرة واحدة فقط"
+    in_c = st.text_input("أدخل كود التفعيل للدخول:", type="password", key="main_login_input")
+
     if st.button("دخول المنصة", use_container_width=True):
         input_cleaned = in_c.strip()
         
-        # كود الإدارة (دكتور Courage)
+        # خوارزمية التحقق الأساسية (دكتور Courage)
         if input_cleaned == "HAYDER_2026":
             st.session_state.update({
                 "auth": True, 
@@ -234,10 +231,11 @@ if "auth" not in st.session_state:
                 "credit": 9999, 
                 "code": "HAYDER_2026"
             })
-            # كسر الحماية فوراً قبل إعادة التحميل
-            st.markdown("<style>[data-testid='stSidebar'], .stSidebar { display: block !important; }</style>", unsafe_allow_html=True)
+            # كسر حماية السلايد بار للمدير
+            st.markdown("<style>[data-testid='stSidebar'], .stSidebar { display: block !important; visibility: visible !important; }</style>", unsafe_allow_html=True)
             st.rerun()
         
+        # هنا يمكنك إضافة خوارزمية التحقق من الأكواد الأخرى (Database)
      # ... (نهاية كود التحقق من الطلاب)
         else:
             st.error("الكود غير صحيح")
