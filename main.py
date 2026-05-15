@@ -182,30 +182,56 @@ if "auth" not in st.session_state:
     
     st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
 
-    # 2. معلومات الدفع والتواصل
-    st.markdown("""
-    <div style="background-color: #1e3a8a; color: white; padding: 20px; border-radius: 15px; border: 3px solid #facc15; text-align: center; margin-bottom: 25px;">
-        <h3 style="color: #facc15; margin-bottom: 10px;">💳 معلومات الدفع وتفعيل الكود</h3>
-        <p style="font-size: 1.1rem; margin: 5px 0;"><b>الاسم:</b> HAYDER Z. JASIM</p>
-        <p style="font-size: 1.1rem; margin: 5px 0;"><b>ماستر كارد الرافدين:</b> 8369719342</p>
-        <p style="font-size: 1.1rem; margin: 5px 0;"><b>رقم الهاتف (تفعيل):</b> 07879974395</p>
-    </div>
-    """, unsafe_allow_html=True)
+# 2. معلومات الدفع والتواصل (بتنسيق سمائي وأحمر) في السلايد بار
+        with st.sidebar:
+            st.markdown(f"""
+            <div style="background-color: #f0f9ff; color: #1e3a8a; padding: 15px; border-radius: 12px; border: 2px solid #ef4444; direction: rtl; text-align: right; margin-bottom: 20px;">
+                <h3 style="color: #ef4444; margin-top: 0; font-size: 1.2rem;">🏦 معلومات الدفع</h3>
+                <p style="margin: 5px 0;"><b>👤 الاسم:</b> HAYDER Z. JASIM</p>
+                <p style="margin: 5px 0;"><b>💳 ماستر كارد:</b> 8369719342</p>
+                <p style="margin: 5px 0;"><b>📞 تفعيل:</b> 07879974395</p>
+            </div>
+            """, unsafe_allow_html=True)
 
-    # 3. عرض جدول الفئات (نسخة واحدة فقط، مصغرة ومتوسطة)
-    st.markdown("<h3 style='text-align: center;'>🏷️ جدول فئات الكروت المحدثة</h3>", unsafe_allow_html=True)
-    
-    price_data = {
-        "الفئة (دينار عراقي)": ["1,000", "5,000", "10,000", "20,000", "30,000", "40,000", "50,000", "100,000"],
-        "عدد المحاولات": ["10 محاولات", "50 محاولة", "100 محاولة", "200 محاولة", "300 محاولة", "400 محاولة", "500 محاولة", "1,000 محاولة"]
-    }
-
-    col_t1, col_t2, col_t3 = st.columns([1, 2, 1])
-    with col_t2:
-        st.table(price_data)
-        st.caption("💡 المحاولة الواحدة تعادل ترجمة صفحة كاملة أو سؤال واحد للمستشار.")
-    
-    st.divider()
+            # 3. عرض جدول الفئات (ملون سمائي وأحمر) في السلايد بار
+            st.markdown("""
+            <style>
+                .sidebar-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    direction: rtl;
+                    text-align: center;
+                    font-size: 0.85rem;
+                }
+                .sidebar-table th {
+                    background-color: #0ea5e9; /* سمائي */
+                    color: white;
+                    padding: 8px;
+                    border: 1px solid #ddd;
+                }
+                .sidebar-table td {
+                    padding: 6px;
+                    border: 1px solid #ddd;
+                    background-color: white;
+                }
+                .sidebar-table tr:nth-child(even) td {
+                    background-color: #fee2e2; /* أحمر خفيف جداً للصفوف الزوجية */
+                }
+            </style>
+            <table class="sidebar-table">
+                <tr><th>الفئة (د.ع)</th><th>المحاولات</th></tr>
+                <tr><td>1,000</td><td>10 محاولات</td></tr>
+                <tr><td>5,000</td><td>50 محاولة</td></tr>
+                <tr><td>10,000</td><td>100 محاولة</td></tr>
+                <tr><td>20,000</td><td>200 محاولة</td></tr>
+                <tr><td>30,000</td><td>300 محاولة</td></tr>
+                <tr><td>40,000</td><td>400 محاولة</td></tr>
+                <tr><td>50,000</td><td>500 محاولة</td></tr>
+                <tr><td>100,000</td><td>1000 محاولة</td></tr>
+            </table>
+            <p style="font-size: 0.75rem; text-align: center; color: #666; margin-top: 10px;">💡 المحاولة الواحدة تعادل ترجمة صفحة كاملة أو سؤال واحد للمستشار</p>
+            """, unsafe_allow_html=True)
+            st.markdown("---")
     # 4. خانة إدخال الكود
     st.markdown("---")
     in_c = st.text_input("🔑 أدخل كود التفعيل للدخول:", type="password", key="secure_login_input")
