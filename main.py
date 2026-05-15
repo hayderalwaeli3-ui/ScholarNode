@@ -182,38 +182,40 @@ if "auth" not in st.session_state:
     
     st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
 
-# 1. القائمة الجانبية (داخل صفحة الدخول فقط)
-        # تأكد أن السطر التالي يبدأ من أقصى اليمين بمحاذاة السطر 183
+# 1. القائمة الجانبية (تظهر فقط في صفحة الدخول)
     with st.sidebar:
-            st.markdown(f"""
-            <div style="background-color: #f0f9ff; color: #1e3a8a; padding: 15px; border-radius: 12px; border: 2px solid #ef4444; direction: rtl; text-align: right;">
-                <h3 style="color: #ef4444; margin-top: 0; font-size: 1.1rem;">🏦 معلومات الدفع</h3>
-                <p style="margin: 5px 0;"><b>👤 الاسم:</b> HAYDER Z. JASIM</p>
-                <p style="margin: 5px 0;"><b>💳 ماستر كارد:</b> 8369719342</p>
-                <p style="margin: 5px 0;"><b>📞 تفعيل:</b> 07879974395</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style="background-color: #f0f9ff; color: #1e3a8a; padding: 15px; border-radius: 12px; border: 2px solid #ef4444; direction: rtl; text-align: right;">
+            <h3 style="color: #ef4444; margin-top: 0; font-size: 1.1rem;">🏦 معلومات الدفع</h3>
+            <p style="margin: 5px 0;"><b>👤 الاسم:</b> HAYDER Z. JASIM</p>
+            <p style="margin: 5px 0;"><b>💳 ماستر كارد:</b> 8369719342</p>
+            <p style="margin: 5px 0;"><b>📞 تفعيل:</b> 07879974395</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-            st.markdown("""
-            <style>
-                .side-table { width: 100%; border-collapse: collapse; direction: rtl; text-align: center; font-size: 0.8rem; margin-top: 10px; }
-                .side-table th { background-color: #0ea5e9; color: white; padding: 6px; }
-                .side-table td { padding: 5px; border: 1px solid #ddd; background-color: white; }
-                .side-table tr:nth-child(even) td { background-color: #fee2e2; }
-            </style>
-            <table class="side-table">
-                <tr><th>الفئة (د.ع)</th><th>المحاولات</th></tr>
-                <tr><td>1,000</td><td>10 محاولات</td></tr>
-                <tr><td>5,000</td><td>50 محاولة</td></tr>
-                <tr><td>10,000</td><td>100 محاولة</td></tr>
-                <tr><td>20,000</td><td>200 محاولة</td></tr>
-                <tr><td>30,000</td><td>300 محاولة</td></tr>
-                <tr><td>40,000</td><td>400 محاولة</td></tr>
-                <tr><td>50,000</td><td>500 محاولة</td></tr>
-                <tr><td>100,000</td><td>1000 محاولة</td></tr>
-            </table>
-            """, unsafe_allow_html=True)
+        st.markdown("""
+        <style>
+            .side-table { width: 100%; border-collapse: collapse; direction: rtl; text-align: center; font-size: 0.8rem; margin-top: 10px; }
+            .side-table th { background-color: #0ea5e9; color: white; padding: 6px; border: 1px solid #ddd; }
+            .side-table td { padding: 5px; border: 1px solid #ddd; background-color: white; color: black; }
+            .side-table tr:nth-child(even) td { background-color: #fee2e2; }
+        </style>
+        <table class="side-table">
+            <tr><th>الفئة (د.ع)</th><th>المحاولات</th></tr>
+            <tr><td>1,000</td><td>10 محاولات</td></tr>
+            <tr><td>5,000</td><td>50 محاولة</td></tr>
+            <tr><td>10,000</td><td>100 محاولة</td></tr>
+            <tr><td>20,000</td><td>200 محاولة</td></tr>
+            <tr><td>30,000</td><td>300 محاولة</td></tr>
+            <tr><td>40,000</td><td>400 محاولة</td></tr>
+            <tr><td>50,000</td><td>500 محاولة</td></tr>
+            <tr><td>100,000</td><td>1000 محاولة</td></tr>
+        </table>
+        """, unsafe_allow_html=True)
 
+    # 2. فاصل بسيط قبل خانة الكود
+    st.markdown("---")
+    
         # 2. خانة إدخال الكود (ستبقى في الوسط كما أردت)
         st.markdown("---")
     # 4. خانة إدخال الكود
