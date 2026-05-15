@@ -128,11 +128,11 @@ with st.sidebar:
 if "auth" in st.session_state:
             st.write(f"🎟️ **الكود المفعل:** `{st.session_state.code}`")
             
-       # --- [إضافة خيار الإدارة] ---
-        if st.session_state.code == "HAYDER_2026":
-            # إعادة إظهار السلايد الجانبي والشريط العلوي للمدير فقط
-            st.markdown("""
-                <style>
+            # --- [إضافة خيار الإدارة] --- (يجب أن يكون تحت st.write مباشرة)
+            if st.session_state.code == "HAYDER_2026":
+                # إعادة إظهار السلايد الجانبي والشريط العلوي للمدير فقط
+                st.markdown("""
+                    <style>
                     [data-testid="stSidebar"], .stSidebar { 
                         display: block !important; 
                         visibility: visible !important; 
