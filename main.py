@@ -172,7 +172,7 @@ with st.sidebar:
                 st.session_state.admin_view = not st.session_state.get('admin_view', False)
 # --- [1. بوابة الدخول والمعلومات - تظهر فقط قبل تسجيل الدخول] ---
 if "auth" not in st.session_state:
-    # تنسيق صفحة الدخول (إظهار السلايد بار للجدول فقط)
+    # تنسيق صفحة الدخول: إظهار السلايد بار للجدول
     st.markdown("""
         <style>
             [data-testid="stSidebar"] { display: block !important; }
@@ -182,7 +182,7 @@ if "auth" not in st.session_state:
     
     st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
 
-    # معلومات الدفع والجدول الملون في الجانب
+    # وضع معلومات الدفع والجدول الملون في السلايد بار
     with st.sidebar:
         st.markdown(f"""
         <div style="background-color: #f0f9ff; color: #1e3a8a; padding: 15px; border-radius: 12px; border: 2px solid #ef4444; direction: rtl; text-align: right;">
@@ -193,6 +193,7 @@ if "auth" not in st.session_state:
         </div>
         """, unsafe_allow_html=True)
 
+        # جدول فئات الكروت الملون (سمائي وأحمر)
         st.markdown("""
         <style>
             .side-table { width: 100%; border-collapse: collapse; direction: rtl; text-align: center; font-size: 0.8rem; margin-top: 10px; }
@@ -214,7 +215,7 @@ if "auth" not in st.session_state:
         """, unsafe_allow_html=True)
         st.markdown("---")
 
-    # واجهة الدخول في وسط الصفحة
+    # واجهة الدخول في الوسط
     st.markdown('<div style="text-align: center;"><h3>🔑 بوابة الدخول الآمن</h3></div>', unsafe_allow_html=True)
     in_c = st.text_input("أدخل كود التفعيل للدخول:", type="password", key="main_login_input")
 
@@ -223,29 +224,27 @@ if "auth" not in st.session_state:
         if input_cleaned == "HAYDER_2026":
             st.session_state.update({"auth": True, "is_admin": True, "credit": 9999, "code": "HAYDER_2026"})
             st.rerun()
-        # هنا يمكنك إضافة التحقق من الأكواد الأخرى (Database) كما كانت لديك
         else:
             st.error("الكود غير صحيح")
             
-    st.stop() # هذا أهم سطر: يمنع ظهور أي شيء تحت هذه النقطة قبل الدخول
+    st.stop() # يمنع ظهور محتوى المنصة قبل الدخول
 
-# --- [2. بعد تسجيل الدخول بنجاح] ---
-# إعادة الصلاحيات للمدير (إظهار السلايد بار لخيارات الإدارة)
-if st.session_state.get("code") == "HAYDER_2026":
-    st.markdown("<style>[data-testid='stSidebar'] { display: block !important; }</style>", unsafe_allow_html=True)
+# --- [2. محتوى المنصة - يظهر فقط بعد الدخول] ---
 
-# رسالة الترحيب تظهر "مرة واحدة فقط" هنا
+# رسالة الترحيب (تظهر مرة واحدة فقط)
 st.markdown(f'<div class="main-header"><h1>مرحباً دكتور Courage</h1><h2>الرصيد المتاح: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
 
-# أكمل بقية كود المنصة (الـ Tabs، الـ File Uploader، ولوحة الإدارة) من هنا...
-
+# لوحة الإدارة للمدير (تأكد من المحاذاة)
+if st.session_state.get('is_admin', False):
+    st.markdown('<div class="admin-area"><h3>🛠️ إدارة اشتراكات ScholarNode</h3>', unsafe_allow_html=True)
+    admin_tab1, admin_tab2 = st.tabs(["🎫 إصدار كروت جديدة", "📋 كشف الأكواد"])
+    
     with admin_tab1:
         st.info("💡 السياسة الحالية: 1,000=10 | 5,000=50 | 10,000=100 محاولة")
-
-        # 1. اختيار قيمة الكارت
-        card_value = st.selectbox("💰 اختر قيمة الكارت (دينار عراقي):",
+        card_value = st.selectbox("💰 اختر قيمة الكارت (دينار عراقي):", 
                                  [1000, 5000, 10000, 20000, 30000, 40000, 50000, 100000],
                                  format_func=lambda x: f"{x:,} دينار")
+        # أكمل بقية كود الإصدار هنا...
 
         # 2. الحسبة الآلية للمحاولات
         if card_value == 1000:
