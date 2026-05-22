@@ -1,38 +1,12 @@
 import streamlit as st
 
-# 1. ضبط إعدادات الصفحة لتكون مغلقة افتراضياً ومنع الوميض
-st.set_page_config(page_title="ScholarNode Academy", layout="wide", initial_sidebar_state="collapsed")
+# 1. ضبط إعدادات الصفحة الأساسية لمنع الوميض
+st.set_page_config(page_title="ScholarNode Academy", layout="wide", initial_sidebar_state="expanded")
 
-# 2. حجب القائمة الجانبية فورياً بالـ CSS قبل تحميل بقية الملف لحماية الخصوصية
-st.markdown("""
-    <style>
-        /* إخفاء كلي وشامل لكل شيء فوق المحتوى */
-        header, [data-testid="stHeader"], .stAppHeader, 
-        [data-testid="stToolbar"], #MainMenu, button[kind="header"] {
-            display: none !important;
-            visibility: hidden !important;
-            height: 0px !important;
-        }
-        
-        /* إخفاء القطة والنقاط الثلاث بأسمائها البرمجية الجديدة */
-        .st-emotion-cache-zq5wmm, .st-emotion-cache-18ni7ve, 
-        .st-emotion-cache-yf7105, .st-emotion-cache-1647ite {
-            display: none !important;
-        }
-
-        /* رفع المحتوى للأعلى وتغطية مكان الشريط تماماً */
-        .main .block-container {
-            padding-top: 0rem !important;
-            margin-top: -70px !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-# 3. استدعاء المكتبات (بدون أي تكرار)
+# 2. استدعاء المكتبات بدون تكرار
 import pandas as pd
 import os
 import io
-import uuid
 import random
 import string
 from datetime import datetime
@@ -43,13 +17,12 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt
 from openai import OpenAI
 
-# --- [بروتوكول الحماية المطلقة والاتصال الآمن] ---
+# --- [إعدادات الاتصال الآمن وقواعد البيانات] ---
 API_KEY = st.secrets["OPENAI_API_KEY"]
 client = OpenAI(api_key=API_KEY)
 DB_CODES = "scholar_main_db.csv"
 DB_SECURITY = "device_tracking.csv"
 
-# --- تهيئة قواعد البيانات التلقائية ---
 def init_db():
     if not os.path.exists(DB_CODES):
         pd.DataFrame(columns=["code", "credit", "remaining", "status", "activation_date", "price_point"]).to_csv(DB_CODES, index=False)
@@ -72,10 +45,10 @@ def create_word_file(text):
     bio.seek(0)
     return bio
 
-# --- وظائف الخصم والحماية من الاختراق الحركي ---
+# --- وظيفة خصم المحاولات الذكية ---
 def deduct_attempt(amount=1):
-    if st.session_state.code == "HAYDER_2026":
-        return True  # حساب المدير معفى من الخصم
+    if st.session_state.get('code') == "HAYDER_2026":
+        return True  # حساب الإدارة معفى من الخصم
     df = pd.read_csv(DB_CODES)
     idx_list = df.index[df['code'] == st.session_state.code].tolist()
     if idx_list:
@@ -87,7 +60,7 @@ def deduct_attempt(amount=1):
             return True
     return False
 
-# --- تنسيق الألوان الذكي المخصص للواجهات (CSS) ---
+# --- تنسيق الـ CSS والألوان للواجهات والأزرار ---
 st.markdown("""
 <style>
 .main-header { background: #1e3a8a; color: #ffffff !important; padding: 20px; text-align: center; border-radius: 15px; border: 4px solid #facc15; margin-bottom: 25px; }
@@ -100,17 +73,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- [بوابة الدخول الصارمة - قبل تسجيل الدخول] ---
+# --- [بوابة التحقق والدخول الصارمة] ---
 if "auth" not in st.session_state:
-    # فتح السلايد بار حصرياً لإظهار فئات الاشتراك والتحصيل المالي في صفحة الدخول
-    st.markdown("""
-        <style>
-            [data-testid="stSidebar"] { display: block !important; }
-        </style>
-    """, unsafe_allow_html=True)
-    
+    # هيدر صفحة الدخول
     st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
-
+    
+    # محتويات الشريط الجانبي (تظهر دائماً قبل الدخول للتحصيل المالي)
     with st.sidebar:
         st.markdown("""
         <div style="background-color: #f0f9ff; color: #1e3a8a; padding: 15px; border-radius: 12px; border: 2px solid #ef4444; direction: rtl; text-align: right;">
@@ -121,7 +89,7 @@ if "auth" not in st.session_state:
         </div>
         """, unsafe_allow_html=True)
 
-        # جدول فئات الاشتراك الملون (سمائي وأحمر)
+        # جدول فئات الكروت الملون
         st.markdown("""
         <table class="side-table">
             <tr><th>الفئة (د.ع)</th><th>المحاولات</th></tr>
@@ -137,7 +105,7 @@ if "auth" not in st.session_state:
         """, unsafe_allow_html=True)
         st.markdown("---")
 
-    # كتل واجهة الدخول الوسطى
+    # واجهة الدخول في المنتصف
     st.markdown('<div style="text-align: center; margin-top: 20px;"><h3>🔑 بوابة الدخول الآمن للمنصة</h3></div>', unsafe_allow_html=True)
     in_c = st.text_input("أدخل كود التفعيل المستلم للاتصال بالخادم:", type="password", key="main_login_input")
 
@@ -157,36 +125,25 @@ if "auth" not in st.session_state:
                     st.error("⚠️ هذا الكود مستهلك بالكامل، يرجى شحن الرصيد.")
             else:
                 st.error("❌ الكود غير صحيح، يرجى التحقق أو التواصل مع الدعم لتفعيل كارت جديد.")
-                
-    st.stop()  # الحماية القاطعة: تمنع بايثون من استعراض أي سطر بالأسفل قبل النجاح في الدخول
+    st.stop()  # حماية مطلقة: تمنع تشغيل بقية السطور قبل الدخول بنجاح
 
-# --- [محتوى المنصة المحمي - يظهر فقط بعد الدخول] ---
+# --- [محتوى المنصة الفعلي - يظهر فقط بعد الدخول بنجاح] ---
 
-# تخصيص السلايد بار بعد تسجيل الدخول (إخفاء الأشرطة لمنع العبث لغير الإدارة)
+# تخصيص ظهور شريط الإدارة أو حجب شريط الطلاب
 if not st.session_state.get('is_admin', False):
-    st.markdown("""
-        <style>
-            [data-testid="stSidebar"] { display: none !important; }
-        </style>
-    """, unsafe_allow_html=True)
+    st.markdown("<style>[data-testid='stSidebar'] { display: none !important; }</style>", unsafe_allow_html=True)
 else:
-    # فتح لوحة الإدارة للمدير بسلايد بار مرئي ومتحكم به
-    st.markdown("""
-        <style>
-            [data-testid="stSidebar"], .stSidebar { display: block !important; visibility: visible !important; }
-        </style>
-    """, unsafe_allow_html=True)
     with st.sidebar:
         st.write(f"⚙️ **حساب الإدارة نشط**")
-        st.write(f"🎟️ **كود المرور المستخدم:** `{st.session_state.code}`")
+        st.write(f"🎟️ **الكود الحاري:** `{st.session_state.code}`")
         if st.button("🚪 تسجيل الخروج الآمن"):
             st.session_state.clear()
             st.rerun()
 
-# رسالة ترحيبية أساسية موحدة (تظهر مرة واحدة في أعلى المنصة)
+# رسالة الترحيب الموحدة في الأعلى
 st.markdown(f'<div class="main-header"><h1>مرحباً دكتور Courage</h1><h2>الرصيد المتاح: {st.session_state.credit}</h2></div>', unsafe_allow_html=True)
 
-# لوحة الإدارة الحصرية للمدير لإنشاء وإصدار الأكواد والكروت
+# لوحة التحكم الحصرية للمدير لإنشاء الأكواد
 if st.session_state.get('is_admin', False):
     st.markdown('<div class="admin-area"><h3>🛠️ لوحة تحكم الاشتراكات والكروت الصادرة</h3>', unsafe_allow_html=True)
     admin_tab1, admin_tab2 = st.tabs(["🎫 إصدار كروت جديدة", "📋 كشف الأكواد المفعّلة"])
@@ -234,7 +191,7 @@ if st.session_state.get('is_admin', False):
                         "price_point": f"{card_value:,} IQD"
                     }])
                     pd.concat([df, new_entry], ignore_index=True).to_csv(DB_CODES, index=False)
-                    st.success(f"✔️ تم الحفظ والنشاط! الكود {c_new.strip()} جاهز بقيمة {card_value:,} د.ع ورصيد {c_credit} محاولة.")
+                    st.success(f"✔️ تم الحفظ والنشاط! الكود {c_new.strip()} جاهز بقيمة {card_value:,} د.ع.")
                     st.session_state.generated_code = ""
             else:
                 st.error("⚠️ يرجى الضغط على زر التوليد لصياغة الكود أولاً.")
@@ -243,7 +200,7 @@ if st.session_state.get('is_admin', False):
         st.dataframe(pd.read_csv(DB_CODES), use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- الواجهة البرمجية الأساسية للمنصة ومستندات المراجعة ---
+# --- الواجهة البرمجية الأساسية وتبويبات العمل المنفصلة ---
 up = st.file_uploader("📂 ارفع مستند أو كتاب بصيغة PDF للمراجعة، الترجمة، أو الفحص", type=["pdf"])
 
 tabs = st.tabs(["💬 المستشار الذكي", "🌍 الترجمة الأكاديمية", "🎓 المراجعة العلمية النقدية", "📄 معاينة ومناقشة المستند"])
@@ -286,13 +243,13 @@ with tabs[0]:
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
 
-# 2. كتلة المعالجة والتحليل للملفات (ترجمة + مراجعة نقدية + معاينة تفاعلية)
+# 2. كتل معالجة الملف المرفوع
 if up:
     up.seek(0)
     doc_v = fitz.open(stream=up.read(), filetype="pdf")
     p_count = len(doc_v)
     
-    # تبويب الترجمة المتقدمة
+    # تبويب الترجمة
     with tabs[1]:
         st.subheader("🌍 مترجم ومصوب الحقول الأكاديمية الاحترافي")
         t_lang = st.selectbox("اختر اللغة المراد الترجمة إليها:", ["العربية", "English"], key="t_lang_new")
@@ -309,7 +266,7 @@ if up:
                             if page_text.strip():
                                 res = client.chat.completions.create(
                                     model="gpt-4o-mini",
-                                    messages=[{"role": "system", "content": f"You are a professional academic translator. Translate the following text into professional {t_lang}, maintaining rigid scientific context and terminology."}, 
+                                    messages=[{"role": "system", "content": f"You are a professional academic translator. Translate into professional {t_lang}."}, 
                                               {"role": "user", "content": page_text}]
                                 )
                                 full_translation += f"\n--- صفحة {i+1} ---\n" + res.choices[0].message.content + "\n"
@@ -318,7 +275,7 @@ if up:
                         st.success("✅ تمت معالجة وتدقيق المستند بنجاح!")
                         st.rerun()
             else:
-                st.error(f"⚠️ رصيدك المتبقي ({current_credit}) لا يغطي تكلفة ترجمة المستند المكون من ({p_count}) صفحة.")
+                st.error(f"⚠️ رصيدك المتبقي لا يغطي تكلفة ترجمة المستند المكون من ({p_count}) صفحة.")
         
         if "translation_result" in st.session_state:
             st.download_button(
@@ -342,7 +299,7 @@ if up:
                             chunk = "\n".join([doc_v[j].get_text() for j in range(i, min(i+10, p_count))])
                             res = client.chat.completions.create(
                                 model="gpt-4o-mini", 
-                                messages=[{"role": "system", "content": f"Provide an intensive academic peer-review report in {review_lang}. Critique methodology, coherence, literature placement, and clarity."},
+                                messages=[{"role": "system", "content": f"Provide an intensive academic peer-review report in {review_lang}."},
                                           {"role": "user", "content": chunk}]
                             )
                             full_review += res.choices[0].message.content + "\n"
@@ -386,7 +343,6 @@ if up:
         st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
 
 else:
-    # حماية ضد أخطاء استدعاء المتغيرات غير الموجودة قبل رفع الملف
     with tabs[1]: st.info("📂 يرجى رفع ملف الـ PDF من الأعلى لتفعيل محرك الترجمة الفورية.")
     with tabs[2]: st.info("📂 يرجى رفع ملف الـ PDF من الأعلى لتفعيل فحص الهيكل النقدي.")
     with tabs[3]: st.info("📂 يرجى رفع ملف الـ PDF من الأعلى لاستعراض ومناقشة محتوى الصفحات.")
