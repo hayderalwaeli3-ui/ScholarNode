@@ -279,22 +279,27 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
             if st.button("🚪 تسجيل الخروج", use_container_width=True, on_click=logout):
                 st.success("تم تسجيل الخروج.")
 
-    st.markdown("### 📝 مركز معالجة النصوص والبحوث الأكاديمية")
-    st.info("💡 لتفادي مشاكل تعليق السيرفر: يرجى نسخ نص بحثك أو مستندك (من الـ PDF أو Word) ولصقه في الصندوق أدناه مباشرة.")
+    st.markdown("### 📁 مركز رفع ومعالجة المستندات والبحوث")
+    uploaded_file = st.file_uploader("شريط التحميل الموحد (يدعم PDF, Word, وصور بجميع أنواعها)", type=["pdf", "docx", "doc", "png", "jpg", "jpeg"], accept_multiple_files=False, key="main_file_uploader")
     
-    # صندوق اللصق السريع والآمن
-    user_text_input = st.text_area("ضع نص المستند أو البحث هنا للتحليل والمعالجة:", height=250, key="academic_text_area")
-    
-    # الخدعة البرمجية: تعريف المتغير القديم وهمياً لإنقاذ التبويبات بالأسفل من الـ NameError
-    uploaded_file = None
-    
+    # حلقة الوصل ومخزن النص المستخرج لجميع التبويبات بالأسفل
     if 'extracted_content' not in st.session_state:
         st.session_state['extracted_content'] = ""
-        
-    if user_text_input:
-        st.session_state['extracted_content'] = user_text_input
-        st.success("✔️ تم استقبال النص بنجاح! التبويبات بالأسفل جاهزة الآن للتحليل والمعالجة الفورية.")
+
+    if uploaded_file is not None:
+        try:
+            with st.spinner("⏳ جاري معالجة وقراءة محتوى الملف (نصوص وصور) ذكياً..."):
+                # استدعاء خوارزمية المعالجة الأساسية للملف
+                file_text = extract_text_from_file(uploaded_file)
+                if file_text:
+                    st.session_state['extracted_content'] = file_text
+                    st.success(f"✔️ تم استقبال ملف ({uploaded_file.name}) ومعالجته بنجاح! التبويبات بالأسفل جاهزة للعمل الآن.")
+                else:
+                    st.warning("⚠️ تم رفع الملف، لكن لم يتم العثور على نصوص قابلة للاستخراج التلقائي.")
+        except Exception as e:
+            st.error(f"❌ حدث خطأ أثناء معالجة الملف داخلياً: {str(e)}")
     else:
+        # إذا لم يتم رفع ملف، نضمن أن المتغير فارغ ولا يسبب انهيار للتبويبات
         st.session_state['extracted_content'] = ""
             
     st.markdown("---")
