@@ -336,7 +336,7 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                             model="gpt-4o-mini",
                             messages=[
                                 {"role": "system", "content": "أنت مساعد أكاديمي تجيب على أسئلة المستخدم بناءً على محتوى الملف المرفق بدقة علمية بالغة وبنفس لغة السؤال."},
-                                {"role": "user", "content": f"محتوى الملف:\n{extracted_content}\n\nسؤال المستخدم:\n{user_query}"}
+                                {"role": "user", "content": f"محتوى الملف:\n{st.session_state['extracted_content']}\n\nسؤال المستخدم:\n{user_query}"}
                             ]
                         )
                         if not st.session_state['is_admin']:
@@ -364,7 +364,7 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                             model="gpt-4o-mini",
                             messages=[
                                 {"role": "system", "content": "أنت بروفيسور محكم للأبحاث العلمية. قم بتقديم نقد منهجي، أكاديمي، وبنيوي مفصل للنص المرفق واقترح نقاط التحسين باللغة العربية."},
-                                {"role": "user", "content": extracted_content}
+                                {"role": "user", "content": st.session_state['extracted_content']}
                             ]
                         )
                         if not st.session_state['is_admin']:
@@ -394,7 +394,7 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                             model="gpt-4o-mini",
                             messages=[
                                 {"role": "system", "content": f"ترجم النص التالي ترجمة أكاديمية احترافية دقيقة مع الحفاظ على المصطلحات العلمية الرصينة والسياق الأكاديمي إلى لغة: {target_lang_tab3}."},
-                                {"role": "user", "content": extracted_content[:4000]}
+                                {"role": "user", "content": st.session_state['extracted_content'][:4000]}
                             ]
                         )
                         if not st.session_state['is_admin']:
@@ -422,7 +422,7 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                             model="gpt-4o-mini",
                             messages=[
                                 {"role": "system", "content": f"أنت مترجم قانوني محلف ومجاز. صغ وترجم النص التالي بلغة قانونية رسمية صارمة ومطابقة للمعايير لتناسب التقديم إلى: {legal_entity}."},
-                                {"role": "user", "content": extracted_content[:4000]}
+                                {"role": "user", "content": st.session_state['extracted_content'][:4000]}
                             ]
                         )
                         if not st.session_state['is_admin']:
@@ -524,7 +524,7 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                     calculated_advisor_cost = math.ceil(total_words / 600)
                     
                     if user_info['attempts'] < calculated_advisor_cost:
-                        st.error("❌ رصيدك الحالي منخفض لإنجاز صياغة الاستشارة المقدرة.")
+                        st.error("❌ رصيدك الحالي منخفض لإنجاز صياغة الاستشارة المقذرة.")
                     else:
                         if not st.session_state['is_admin']:
                             st.session_state['active_codes'][current_code]['attempts'] -= calculated_advisor_cost
