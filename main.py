@@ -282,10 +282,24 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
     st.markdown("### 📁 مركز رفع ومعالجة المستندات والبحوث")
     uploaded_file = st.file_uploader("شريط التحميل الموحد (يدعم PDF, Word, وصور بجميع أنواعها)", type=["pdf", "docx", "doc", "png", "jpg", "jpeg"], accept_multiple_files=False, key="main_file_uploader")
     
-    extracted_content = ""
+    # حلقة الوصل المفقودة: تجهيز المتغير لتقرأه التبويبات بالأسفل دون انهيار
+    if 'extracted_content' not in st.session_state:
+        st.session_state['extracted_content'] = ""
+
     if uploaded_file is not None:
-        st.success(f"✔️ تم استقبال ملف ({uploaded_file.name}) بنجاح وهو جاهز للمعالجة.")
-        extracted_content = "تم تخطي القراءة التلقائية للملف بنجاح لحماية استقرار السيرفر."
+        try:
+            # تشغيل الخوارزمية مع حماية الجلسة من الانهيار
+            with st.spinner("⏳ جاري معالجة وقراءة الملف أكاديمياً..."):
+                file_text = extract_text_from_file(uploaded_file)
+                if file_text:
+                    st.session_state['extracted_content'] = file_text
+                    st.success(f"✔️ تم استقبال ملف ({uploaded_file.name}) وقراءته بنجاح! التبويبات بالأسفل جاهزة الآن للعمل.")
+                else:
+                    st.warning("⚠️ تم رفع الملف، ولكن لم نجد نصوصاً قابلة للقراءة داخله.")
+        except Exception as e:
+            st.error(f"❌ حدث خطأ أثناء معالجة الملف: {str(e)}")
+    else:
+        st.session_state['extracted_content'] = ""
             
     st.markdown("---")
     st.markdown("### 🛠️ التبويبات والخدمات الأكاديمية المتطورة")
