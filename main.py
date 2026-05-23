@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import uuid
 from datetime import datetime, timedelta
 import math
@@ -30,30 +31,6 @@ CUSTOM_CSS = """
         font-family: 'Arial', sans-serif;
         font-weight: bold;
         margin: 0;
-    }
-    /* تنسيق الجداول لتناسب اللون الأزرق والأصفر الفاتح */
-    .styled-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 15px 0;
-        font-size: 0.95em;
-        border-radius: 5px;
-        overflow: hidden;
-    }
-    .styled-table th {
-        background-color: #e6f2ff;
-        color: #003366;
-        text-align: center;
-        padding: 10px;
-        border: 1px solid #ffe680;
-    }
-    .styled-table td {
-        padding: 10px;
-        text-align: center;
-        border: 1px solid #ffe680;
-    }
-    .styled-table tr:nth-child(even) {
-        background-color: #fffde6;
     }
     /* الفوتر أسفل الصفحة */
     .footer {
@@ -106,8 +83,34 @@ def simulate_processing():
     status_text.empty()
     progress_bar.empty()
 
+# دالة ذكية لإجبار المتصفح على عرض الجدول كـ HTML حقيقي ومستقل ومقاوم للـ Raw Text
 def render_cards_table():
     html_table = """
+    <style>
+        .styled-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            font-family: sans-serif;
+            border-radius: 5px;
+            overflow: hidden;
+            direction: rtl;
+            text-align: center;
+        }
+        .styled-table th {
+            background-color: #e6f2ff;
+            color: #003366;
+            padding: 10px;
+            border: 1px solid #ffe680;
+        }
+        .styled-table td {
+            padding: 10px;
+            border: 1px solid #ffe680;
+        }
+        .styled-table tr:nth-child(even) {
+            background-color: #fffde6;
+        }
+    </style>
     <table class="styled-table">
         <thead>
             <tr>
@@ -127,7 +130,8 @@ def render_cards_table():
             </tr>
         """
     html_table += "</tbody></table>"
-    st.markdown(html_table, unsafe_allow_html=True)
+    # استخدام مكون HTML الصريح لضمان التصيير الرسومي الصحيح بنسبة 100%
+    components.html(html_table, height=380, scrolling=True)
 
 def logout():
     st.session_state['logged_in'] = False
@@ -184,7 +188,7 @@ if not st.session_state['logged_in'] and not st.session_state['is_admin']:
                 st.error("⚠️ الكود غير فعال أو غير صحيح. يرجى التأكد من كود التفعيل الخاص بك أو تجديد الاشتراك.")
 
         st.write("---")
-        st.subheader("📊 فئات الاشتраكات والبطاقات المتوفرة")
+        st.subheader("📊 فئات الاشتراكات والبطاقات المتوفرة")
         render_cards_table()
 
     with col_payment:
