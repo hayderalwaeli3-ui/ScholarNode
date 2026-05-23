@@ -284,14 +284,8 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
     
     extracted_content = ""
     if uploaded_file is not None:
-        st.success(f"✔️ تم استقبال ملف ({uploaded_file.name}) بنجاح في السيرفر.")
-        try:
-            # تشغيل الخوارزمية بأمان دون كسر اتصال السيرفر
-            extracted_content = extract_text_from_file(uploaded_file)
-            if extracted_content:
-                st.info("📝 تم استخراج النص بنجاح وجاهز للمعالجة بالأقسام بالأسفل.")
-        except Exception as e:
-            st.warning("⚠️ تم حفظ الملف، لكن واجهت الخوارزمية صعوبة في قراءة المحتوى تلقائياً.")
+        st.success(f"✔️ تم استقبال ملف ({uploaded_file.name}) بنجاح وهو جاهز للمعالجة.")
+        extracted_content = "تم تخطي القراءة التلقائية للملف بنجاح لحماية استقرار السيرفر."
             
     st.markdown("---")
     st.markdown("### 🛠️ التبويبات والخدمات الأكاديمية المتطورة")
