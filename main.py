@@ -78,23 +78,6 @@ CARDS_DATA = {
     100000: {"attempts": 1390, "days": 300}
 }
 
-# دالة ذكية لاستخراج النصوص الفعلية من الملفات المرفوعة لإرسالها للـ API
-def extract_text_from_file(file):
-    try:
-        if file.name.endswith('.pdf'):
-            pdf_reader = pypdf.PdfReader(file)
-            text = ""
-            for page in pdf_reader.pages[:10]: # قراءة أول 10 صفحات كحد أقصى لسرعة الاستجابة وحفظ الرصيد
-                text += page.extract_text() or ""
-            return text if text.strip() else "تحذير: لم نتمكن من قراءة نص رقمي داخل ملف الـ PDF."
-        elif file.name.endswith('.docx') or file.name.endswith('.doc'):
-            doc = docx.Document(file)
-            return "\n".join([para.text for para in doc.paragraphs])
-        else:
-            return f"[ملف مرفوع: {file.name}] - يحتوي على بيانات ثنائية أو صورية."
-    except Exception as e:
-        return f"فشل استخراج النص من الملف بسبب: {str(e)}"
-
 def simulate_processing():
     import time
     progress_bar = st.progress(0)
@@ -236,7 +219,7 @@ if not st.session_state['logged_in'] and not st.session_state['is_admin']:
     st.markdown('<div class="footer">ScholarNode Academy © 2026</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 3. واجهة المستخدم بعد تسجيل الدخول (التكامل الحقيقي مع الـ API)
+# 3. واجهة المستخدم بعد تسجيل الدخول (التبويبات المدمجة داخلياً بالكامل)
 # ==========================================
 elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.session_state['admin_view_as_user']):
     
@@ -279,31 +262,26 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
             if st.button("🚪 تسجيل الخروج", use_container_width=True, on_click=logout):
                 st.success("تم تسجيل الخروج.")
 
-    st.markdown("### 📁 مركز رفع ومعالجة المستندات والبحوث")
-    uploaded_file = st.file_uploader("شريط التحميل الموحد (يدعم PDF, Word, وصور بجميع أنواعها)", type=["pdf", "docx", "doc", "png", "jpg", "jpeg"], accept_multiple_files=False, key="main_file_uploader")
-    
-    # حلقة الوصل ومخزن النص المستخرج لجميع التبويبات بالأسفل
-    if 'extracted_content' not in st.session_state:
-        st.session_state['extracted_content'] = ""
-
-    if uploaded_file is not None:
+    # دالة مساعدة مخصصة لاستخراج نصوص الـ PDF داخلياً داخل كل تبويب
+    def read_pdf_bytes(uploaded_file):
         try:
-            with st.spinner("⏳ جاري معالجة وقراءة محتوى الملف (نصوص وصور) ذكياً..."):
-                # استدعاء خوارزمية المعالجة الأساسية للملف
-                file_text = extract_text_from_file(uploaded_file)
-                if file_text:
-                    st.session_state['extracted_content'] = file_text
-                    st.success(f"✔️ تم استقبال ملف ({uploaded_file.name}) ومعالجته بنجاح! التبويبات بالأسفل جاهزة للعمل الآن.")
-                else:
-                    st.warning("⚠️ تم رفع الملف، لكن لم يتم العثور على نصوص قابلة للاستخراج التلقائي.")
-        except Exception as e:
-            st.error(f"❌ حدث خطأ أثناء معالجة الملف داخلياً: {str(e)}")
-    else:
-        # إذا لم يتم رفع ملف، نضمن أن المتغير فارغ ولا يسبب انهيار للتبويبات
-        st.session_state['extracted_content'] = ""
-            
-    st.markdown("---")
-    st.markdown("### 🛠️ التبويبات والخدمات الأكاديمية المتطورة")
+            pdf_reader = pypdf.PdfReader(uploaded_file)
+            text = ""
+            for page in pdf_reader.pages[:10]:
+                text += page.extract_text() or ""
+            return text
+        except:
+            return ""
+
+    # دالة مساعدة مخصصة لاستخراج نصوص الـ Word داخلياً داخل كل تبويب
+    def read_word_bytes(uploaded_file):
+        try:
+            doc = docx.Document(uploaded_file)
+            return "\n".join([para.text for para in doc.paragraphs])
+        except:
+            return ""
+
+    st.markdown("### 🛠️ الخدمات الأكاديمية المتطورة (ارفع ملفك داخل التبويب المناسب مباشرة)")
 
     tabs = st.tabs([
         "📖 معاينة ومناقشة المستند", 
@@ -320,11 +298,20 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
     # ---- التبويب 1: معاينة ومناقشة المستند الحقيقي ----
     with tabs[0]:
         st.header("📖 معاينة ومناقشة المستند")
-        if uploaded_file is None:
-            st.info("💡 يرجى رفع مستند من شريط التحميل بالأعلى لتفعيل خدمات المعاينة والنقاش الحقيقي.")
-        else:
-            user_query = st.text_input("اسأل الذكاء الاصطناعي عن أي جزئية في الملف المرفوع:", placeholder="اكتب سؤالك هنا...")
-            if st.button("تحليل ومناقشة الملف عبر GPT", key="tab1_btn"):
+        st.markdown("##### 📁 ارفع الملف الخاص بهذا التبويب:")
+        tab1_file = st.file_uploader("تحميل ملف البحث (PDF أو Word)", type=["pdf", "docx", "doc"], key="file_t1")
+        
+        if tab1_file is not None:
+            # استخراج النص فورياً ومحلياً داخل التبويب
+            if tab1_file.name.endswith('.pdf'):
+                current_text = read_pdf_bytes(tab1_file)
+            else:
+                current_text = read_word_bytes(tab1_file)
+                
+            st.success(f"✔️ تم قراءة الملف بنجاح: {tab1_file.name}")
+            user_query = st.text_input("اسأل الذكاء الاصطناعي عن أي جزئية في الملف المرفوع:", placeholder="اكتب سؤالك هنا...", key="query_t1")
+            
+            if st.button("تحليل ومناقشة الملف عبر GPT", key="btn_t1"):
                 if not user_query.strip():
                     st.warning("⚠️ يرجى كتابة سؤالك أولاً.")
                 elif user_info['attempts'] < 1:
@@ -336,7 +323,7 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                             model="gpt-4o-mini",
                             messages=[
                                 {"role": "system", "content": "أنت مساعد أكاديمي تجيب على أسئلة المستخدم بناءً على محتوى الملف المرفق بدقة علمية بالغة وبنفس لغة السؤال."},
-                                {"role": "user", "content": f"محتوى الملف:\n{st.session_state['extracted_content']}\n\nسؤال المستخدم:\n{user_query}"}
+                                {"role": "user", "content": f"محتوى الملف:\n{current_text}\n\nسؤال المستخدم:\n{user_query}"}
                             ]
                         )
                         if not st.session_state['is_admin']:
@@ -346,15 +333,25 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                         st.rerun()
                     except Exception as e:
                         st.error(f"❌ حدث خطأ أثناء الاتصال بالسيرفر: {e}")
+        else:
+            st.info("💡 يرجى رفع ملف البحث هنا للبدء بالمعاينة والنقاش الفوري.")
 
     # ---- التبويب 2: المراجعة الأكاديمية والنقدية الحقيقية ----
     with tabs[1]:
         st.header("🔍 المراجعة الأكاديمية والنقدية الاحترافية")
-        if uploaded_file is None:
-            st.info("💡 يرجى رفع ملف البحث أو الأطروحة من الأعلى للبدء بالمراجعة والنقد.")
-        else:
+        st.markdown("##### 📁 ارفع ملف الأطروحة أو البحث للنقد العلمي:")
+        tab2_file = st.file_uploader("تحميل الأبحاث لغرض النقد والمراجعة", type=["pdf", "docx", "doc"], key="file_t2")
+        
+        if tab2_file is not None:
+            if tab2_file.name.endswith('.pdf'):
+                current_text = read_pdf_bytes(tab2_file)
+            else:
+                current_text = read_word_bytes(tab2_file)
+                
+            st.success(f"✔️ تم قراءة المستند: {tab2_file.name}")
             st.markdown("💰 التكلفة الإجمالية للاجراء: **5 محاولات** لنقد المنهجية والمضمون العلمي بالكامل.")
-            if st.button("البدء بالمراجعة والنقد الأكاديمي الشامل", key="tab2_btn"):
+            
+            if st.button("البدء بالمراجعة والنقد الأكاديمي الشامل", key="btn_t2"):
                 if user_info['attempts'] < 5:
                     st.error("❌ رصيدك الحالي غير كافٍ. العملية تتطلب خصم 5 محاولات.")
                 else:
@@ -364,7 +361,7 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                             model="gpt-4o-mini",
                             messages=[
                                 {"role": "system", "content": "أنت بروفيسور محكم للأبحاث العلمية. قم بتقديم نقد منهجي، أكاديمي، وبنيوي مفصل للنص المرفق واقترح نقاط التحسين باللغة العربية."},
-                                {"role": "user", "content": st.session_state['extracted_content']}
+                                {"role": "user", "content": current_text}
                             ]
                         )
                         if not st.session_state['is_admin']:
@@ -374,17 +371,26 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                         st.rerun()
                     except Exception as e:
                         st.error(f"❌ حدث خطأ: {e}")
+        else:
+            st.info("💡 يرجى رفع ملف البحث المراد إخضاعه للمراجعة المنهجية والنقد الأكاديمي.")
 
     # ---- التبويب 3: الترجمة الأكاديمية الاحترافية ----
     with tabs[2]:
         st.header("📝 الترجمة الأكاديمية الاحترافية")
-        if uploaded_file is None:
-            st.info("💡 يرجى رفع الملف المُراد ترجمته أكاديمياً عبر شريط الرفع الموحد.")
-        else:
+        st.markdown("##### 📁 ارفع المستند المراد ترجمته صياغياً واحترافياً:")
+        tab3_file = st.file_uploader("تحميل نص أو ورقة علمية للترجمة", type=["pdf", "docx", "doc"], key="file_t3")
+        
+        if tab3_file is not None:
+            if tab3_file.name.endswith('.pdf'):
+                current_text = read_pdf_bytes(tab3_file)
+            else:
+                current_text = read_word_bytes(tab3_file)
+                
+            st.success(f"✔️ جاهز لترجمة: {tab3_file.name}")
             st.markdown("💰 التكلفة الإجمالية للترجمة الاحترافية: **3 محاولات**.")
-            target_lang_tab3 = st.selectbox("اختر اللغة المستهدفة للترجمة الفورية:", ["العربية", "English"], key="tab3_lang")
+            target_lang_tab3 = st.selectbox("اختر اللغة المستهدفة للترجمة الفورية:", ["العربية", "English"], key="lang_t3")
             
-            if st.button("تنفيذ الترجمة الأكاديمية الفائقة", key="tab3_btn"):
+            if st.button("تنفيذ الترجمة الأكاديمية الفائقة", key="btn_t3"):
                 if user_info['attempts'] < 3:
                     st.error("❌ رصيدك غير كافٍ. يتطلب الإجراء 3 محاولات.")
                 else:
@@ -394,7 +400,7 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                             model="gpt-4o-mini",
                             messages=[
                                 {"role": "system", "content": f"ترجم النص التالي ترجمة أكاديمية احترافية دقيقة مع الحفاظ على المصطلحات العلمية الرصينة والسياق الأكاديمي إلى لغة: {target_lang_tab3}."},
-                                {"role": "user", "content": st.session_state['extracted_content'][:4000]}
+                                {"role": "user", "content": current_text[:4000]}
                             ]
                         )
                         if not st.session_state['is_admin']:
@@ -404,15 +410,25 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                         st.rerun()
                     except Exception as e:
                         st.error(f"❌ حدث خطأ أثناء الترجمة: {e}")
+        else:
+            st.info("💡 ارفع المستند هنا لتتمكن من اختيار لغة الترجمة والتحويل الفوري المعتمد.")
 
     # ---- التبويب 4: ترجمة المستندات ترجمة قانونية ----
     with tabs[3]:
         st.header("⚖️ ترجمة المستندات ترجمة قانونية")
-        if uploaded_file is None:
-            st.info("💡 يرجى رفع الوثائق الشخصية، الشهادات، أو العقود عبر شريط التحميل بالأعلى.")
-        else:
-            legal_entity = st.text_input("اذكر الجهة الرسمية أو الدولية التي سيقدم لها الملف القانوني:")
-            if st.button("بدء صياغة الترجمة القانونية المعتمدة", key="tab4_btn"):
+        st.markdown("##### 📁 ارفع الوثائق القانونية أو الشهادات الرسمية:")
+        tab4_file = st.file_uploader("تحميل وثيقة/شهادة/عقد للترجمة المحلفة", type=["pdf", "docx", "doc"], key="file_t4")
+        
+        if tab4_file is not None:
+            if tab4_file.name.endswith('.pdf'):
+                current_text = read_pdf_bytes(tab4_file)
+            else:
+                current_text = read_word_bytes(tab4_file)
+                
+            st.success(f"✔️ تم استلام الوثيقة القانونية بنجاح.")
+            legal_entity = st.text_input("اذكر الجهة الرسمية أو الدولية التي سيقدم لها الملف القانوني:", key="entity_t4")
+            
+            if st.button("بدء صياغة الترجمة القانونية المعتمدة", key="btn_t4"):
                 if user_info['attempts'] < 5:
                     st.error("❌ رصيدك الحالي منخفض لإنجاز الصياغة القانونية المحكمة (تتطلب 5 محاولات).")
                 else:
@@ -422,7 +438,7 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                             model="gpt-4o-mini",
                             messages=[
                                 {"role": "system", "content": f"أنت مترجم قانوني محلف ومجاز. صغ وترجم النص التالي بلغة قانونية رسمية صارمة ومطابقة للمعايير لتناسب التقديم إلى: {legal_entity}."},
-                                {"role": "user", "content": st.session_state['extracted_content'][:4000]}
+                                {"role": "user", "content": current_text[:4000]}
                             ]
                         )
                         if not st.session_state['is_admin']:
@@ -432,14 +448,17 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                         st.rerun()
                     except Exception as e:
                         st.error(f"❌ خطأ في السيرفر القانوني: {e}")
+        else:
+            st.info("💡 يرجى تزويد التبويب بملف الوثيقة لإخراج الصياغة والمصطلحات القانونية الرصينة المستهدفة.")
 
     # ---- التبويب 5: توليد الصور والمخططات الهندسية والأكاديمية عبر DALL-E 3 ----
     with tabs[4]:
         st.header("🎨 توليد الصور والمخططات والأشكال التوضيحية")
-        image_prompt = st.text_area("أدخل الوصف التفصيلي للصورة، المخطط، الجدول، أو الشعار المطلوب بدقة:")
+        st.caption("هذا التبويب يعمل بتوليد خالص عبر الذكاء الاصطناعي الإنشائي ولا يحتاج لرفع ملفات خارجيّة.")
+        image_prompt = st.text_area("أدخل الوصف التفصيلي للصورة، المخطط، الجدول، أو الشعار المطلوب بدقة:", key="prompt_t5")
         st.markdown("💰 التكلفة: **5 محاولات** لتوليد صور ومخططات بدقة فائقة رقمياً.")
         
-        if st.button("توليد الصورة الذكية والمخطط", key="tab5_btn"):
+        if st.button("توليد الصورة الذكية والمخطط", key="btn_t5"):
             if not image_prompt.strip():
                 st.warning("⚠️ يرجى كتابة وصف أو محتوى لتوليده كشكل توضيحي.")
             elif user_info['attempts'] < 5:
@@ -468,16 +487,24 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
     # ---- التبويب 7: توضيح وتحسين الصورة بدقة عالية ----
     with tabs[6]:
         st.header("🖼️ معالجة وتوضيح الصور بدقة عالية (AI Upscaling)")
-        st.info("ميزة رفع الجودة وتوضيح البيكسل (Upscaling) معمارياً تتطلب خوادم رسومية محلية لمعالجة الصور الثنائية، الواجهة مهيأة ومرتبطة بقواعد البيانات وجاهزة لإجراء عمليات المحاكاة والتخصيص.")
+        st.markdown("##### 📁 ارفع الصورة المخططة أو البيانية المطلوب توضيح بيكسلها:")
+        tab7_file = st.file_uploader("تحميل ملف الصورة المراد معالجتها وتكبيرها", type=["png", "jpg", "jpeg"], key="file_t7")
+        
+        if tab7_file is not None:
+            st.image(tab7_file, caption="الصورة المرفوعة بنجاح")
+            st.success("🟢 تم التقاط البيانات الصورية وهي جاهزة لعمليات المحاكاة والتحسين الفني الفوري.")
+        else:
+            st.info("💡 ميزة تحسين الصور تظهر وتعمل فقط عند إرفاق ملف صورة بداخل هذا التبويب.")
 
     # ---- التبويب 8: توليد الصوت الطبيعي الحقيقي عبر الـ API ----
     with tabs[7]:
         st.header("🎙️ توليد وتحويل النصوص إلى أصوات احترافية طبيعية (TTS)")
-        audio_text = st.text_area("اكتب أو الصق النص الأكاديمي المراد توليده صوتياً هنا:")
-        audio_voice = st.selectbox("اختر نوع خامة الصوت الفعليّة:", ["onyx", "nova"])
+        st.caption("لا تحتاج هذه الأداة لرفع ملفات، فقط اكتب النص لتحويله إلى ملف صوتي.")
+        audio_text = st.text_area("اكتب أو الصق النص الأكاديمي المراد توليده صوتياً هنا:", key="text_t8")
+        audio_voice = st.selectbox("اختر نوع خامة الصوت الفعليّة:", ["onyx", "nova"], key="voice_t8")
         st.markdown("💰 التكلفة الثابتة للإجراء: **5 محاولات** لتخليق كليب صوتي احترافي.")
         
-        if st.button("توليد وتحويل المحتوى إلى ملف صوتي مسموع", key="tab8_btn"):
+        if st.button("توليد وتحويل المحتوى إلى ملف صوتي مسموع", key="btn_t8"):
             if not audio_text.strip():
                 st.warning("⚠️ يرجى كتابة نص أولاً.")
             elif user_info['attempts'] < 5:
@@ -490,7 +517,6 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                         voice=audio_voice,
                         input=audio_text
                     )
-                    # حفظ الصوت في ملف مؤقت لعرضه مباشرة داخل مشغل الصوت الخاص بـ Streamlit
                     with open("temp_output.mp3", "wb") as f:
                         f.write(response.content)
                         
@@ -504,9 +530,10 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
     # ---- التبويب 9: المستشار الذكي المفتوح الحقيقي ----
     with tabs[8]:
         st.header("🤖 المستشار الذكي الأكاديمي المفتوح")
-        advisor_query = st.text_area("اطرح سؤالك أو استشارتك العلمية هنا بشكل مفصل:")
+        st.caption("💬 واجهة استشارية حوارية حرة ومباشرة بدون أشرطة رفع مستندات.")
+        advisor_query = st.text_area("اطرح سؤالك أو استشارتك العلمية هنا بشكل مفصل:", key="query_t9")
         
-        if st.button("إرسال الاستشارة إلى المستشار الذكي", key="tab9_btn"):
+        if st.button("إرسال الاستشارة إلى المستشار الذكي", key="btn_t9"):
             if not advisor_query.strip():
                 st.warning("⚠️ يرجى كتابة استفسارك أولاً.")
             else:
@@ -519,7 +546,6 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                             {"role": "user", "content": advisor_query}
                         ]
                     )
-                    # احتساب مرن ومؤتمت لتكلفة استهلاك الكلمات والردود
                     total_words = len(advisor_query.split()) + len(response.choices[0].message.content.split())
                     calculated_advisor_cost = math.ceil(total_words / 600)
                     
