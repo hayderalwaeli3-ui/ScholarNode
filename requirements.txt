@@ -3,3 +3,4 @@ openai==2.36.0
 pandas
 PyMuPDF
 python-docx
+pypdf
