@@ -219,7 +219,7 @@ if not st.session_state['logged_in'] and not st.session_state['is_admin']:
     st.markdown('<div class="footer">ScholarNode Academy © 2026</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 3. واجهة المستخدم بعد تسجيل الدخول (تم تنظيفها تماماً)
+# 3. واجهة المستخدم بعد تسجيل الدخول
 # ==========================================
 elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.session_state['admin_view_as_user']):
     
@@ -267,7 +267,7 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
         try:
             pdf_reader = pypdf.PdfReader(uploaded_file)
             text = ""
-            for page in pdf_reader.pages[:10]:
+            for page in pdf_reader.pages[:15]:  # زيادة القراءة لـ 15 صفحة
                 text += page.extract_text() or ""
             return text
         except:
@@ -283,7 +283,7 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
 
     st.markdown("### 🛠️ الخدمات الأكاديمية المتطورة")
 
-    # كتلة التبويبات الرسمية والوحيدة في التطبيق
+    # تبويبات نظيفة ومؤمنة تماماً بـ keys مستقلة منعت تكرار الأخطاء
     tabs = st.tabs([
         "📖 معاينة ومناقشة المستند", 
         "🔍 المراجعة الأكاديمية والنقد", 
@@ -302,17 +302,19 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
         
         col_pdf1, col_word1 = st.columns(2)
         with col_pdf1:
-            pdf_file1 = st.file_uploader("📥 تحميل ملف البحث بصيغة PDF", type=["pdf"], key="pdf_t1")
+            pdf_file1 = st.file_uploader("📥 تحميل ملف البحث بصيغة PDF", type=["pdf"], key="unique_pdf_uploader_tab1")
         with col_word1:
-            word_file1 = st.file_uploader("📥 تحميل ملف البحث بصيغة Word", type=["docx", "doc"], key="word_t1")
+            word_file1 = st.file_uploader("📥 تحميل ملف البحث بصيغة Word", type=["docx", "doc"], key="unique_word_uploader_tab1")
         
         active_text = ""
         if pdf_file1 is not None:
             active_text = read_pdf_bytes(pdf_file1)
-            st.success(f"✔️ تم التقاط نص الـ PDF بنجاح.")
+            if active_text:
+                st.success(f"✔️ تم التقاط نص الـ PDF بنجاح.")
         elif word_file1 is not None:
             active_text = read_word_bytes(word_file1)
-            st.success(f"✔️ تم التقاط نص الـ Word بنجاح.")
+            if active_text:
+                st.success(f"✔️ تم التقاط نص الـ Word بنجاح.")
 
         if active_text:
             user_query = st.text_input("اسأل الذكاء الاصطناعي عن أي جزئية في الملف المرفوع:", placeholder="اكتب سؤالك هنا...", key="query_t1")
@@ -347,9 +349,9 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
         
         col_pdf2, col_word2 = st.columns(2)
         with col_pdf2:
-            pdf_file2 = st.file_uploader("📥 رفع المستند للنقد العلمي (PDF)", type=["pdf"], key="pdf_t2")
+            pdf_file2 = st.file_uploader("📥 رفع المستند للنقد العلمي (PDF)", type=["pdf"], key="unique_pdf_uploader_tab2")
         with col_word2:
-            word_file2 = st.file_uploader("📥 رفع المستند للنقد العلمي (Word)", type=["docx", "doc"], key="word_t2")
+            word_file2 = st.file_uploader("📥 رفع المستند للنقد العلمي (Word)", type=["docx", "doc"], key="unique_word_uploader_tab2")
             
         active_text2 = ""
         if pdf_file2 is not None:
@@ -388,9 +390,9 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
         
         col_pdf3, col_word3 = st.columns(2)
         with col_pdf3:
-            pdf_file3 = st.file_uploader("📥 رفع ملف الترجمة الأكاديمية (PDF)", type=["pdf"], key="pdf_t3")
+            pdf_file3 = st.file_uploader("📥 رفع ملف الترجمة الأكاديمية (PDF)", type=["pdf"], key="unique_pdf_uploader_tab3")
         with col_word3:
-            word_file3 = st.file_uploader("📥 رفع ملف الترجمة الأكاديمية (Word)", type=["docx", "doc"], key="word_t3")
+            word_file3 = st.file_uploader("📥 رفع ملف الترجمة الأكاديمية (Word)", type=["docx", "doc"], key="unique_word_uploader_tab3")
             
         active_text3 = ""
         if pdf_file3 is not None:
@@ -430,9 +432,9 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
         
         col_pdf4, col_word4 = st.columns(2)
         with col_pdf4:
-            pdf_file4 = st.file_uploader("📥 رفع العقد أو الوثيقة الرسمية (PDF)", type=["pdf"], key="pdf_t4")
+            pdf_file4 = st.file_uploader("📥 رفع العقد أو الوثيقة الرسمية (PDF)", type=["pdf"], key="unique_pdf_uploader_tab4")
         with col_word4:
-            word_file4 = st.file_uploader("📥 رفع العقد أو الوثيقة الرسمية (Word)", type=["docx", "doc"], key="word_t4")
+            word_file4 = st.file_uploader("📥 رفع العقد أو الوثيقة الرسمية (Word)", type=["docx", "doc"], key="unique_word_uploader_tab4")
             
         active_text4 = ""
         if pdf_file4 is not None:
@@ -501,7 +503,7 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
     # ---- التبويب 7: توضيح وتحسين الصورة بدقة عالية ----
     with tabs[6]:
         st.header("🖼️ معالجة وتوضيح الصور بدقة عالية (AI Upscaling)")
-        img_file7 = st.file_uploader("📥 تحميل ملف المخطط أو الصورة المراد معالجتها وتكبيرها", type=["png", "jpg", "jpeg"], key="img_t7")
+        img_file7 = st.file_uploader("📥 تحميل ملف المخطط أو الصورة المراد معالجتها وتكبيرها", type=["png", "jpg", "jpeg"], key="unique_image_uploader_tab7")
         
         if img_file7 is not None:
             st.image(img_file7, caption="الصورة المرفوعة بنجاح")
