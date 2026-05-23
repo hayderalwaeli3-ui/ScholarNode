@@ -279,9 +279,8 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
             if st.button("🚪 تسجيل الخروج", use_container_width=True, on_click=logout):
                 st.success("تم تسجيل الخروج.")
 
-st.markdown("### 📁 مركز رفع ومعالجة المستندات والبحوث")
-uploaded_file = st.file_uploader("شريط التحميل الموحد (يدعم PDF, Word, وصور بجميع أنواعها)", type=["pdf", "docx", "doc", "png", "jpg", "jpeg"], accept_multiple_files=False, key="main_file_uploader")
-
+    st.markdown("### 📁 مركز رفع ومعالجة المستندات والبحوث")
+    uploaded_file = st.file_uploader("شريط التحميل الموحد (يدعم PDF, Word, وصور بجميع أنواعها)", type=["pdf", "docx", "doc", "png", "jpg", "jpeg"], accept_multiple_files=False, key="main_file_uploader")
     st.markdown("---")
     st.markdown("### 🛠️ التبويبات والخدمات الأكاديمية المتطورة")
 
