@@ -282,7 +282,8 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
     st.markdown("### 📁 مركز رفع ومعالجة المستندات والبحوث")
     uploaded_file = st.file_uploader(
         "شريط التحميل الموحد (يدعم PDF, Word, وصور بجميع أنواعها)", 
-        type=["pdf", "docx", "doc", "png", "jpg", "jpeg"]
+        type=["pdf", "docx", "doc", "png", "jpg", "jpeg"],
+        accept_multiple_files=False
     )
 
     # معالجة الملف حقيقياً واستخراج محتواه النصي بمجرد رفعه من قبل الطالب
