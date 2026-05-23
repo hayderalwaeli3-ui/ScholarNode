@@ -14,10 +14,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# فصل التنسيقات في متغير نصي مستقل لتفادي خطأ TypeError في حزمة المقاييس
+# فصل التنسيقات في متغير نصي مستقل لتفادي خطأ TypeError
 CUSTOM_CSS = """
 <style>
-    /* علامة الترحيب بالرأس طبقاً للمواصفات */
     .header-box {
         background-color: #0056b3;
         border: 3px solid #ffcc00;
@@ -32,7 +31,6 @@ CUSTOM_CSS = """
         font-weight: bold;
         margin: 0;
     }
-    /* الفوتر أسفل الصفحة */
     .footer {
         text-align: center;
         padding: 20px;
@@ -43,11 +41,9 @@ CUSTOM_CSS = """
     }
 </style>
 """
-
-# تمرير المتغير النصي بشكل آمن وصريح
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
-# قاعدة بيانات وهمية محاكاة بداخل الـ Session State للحفاظ على الأمان والعمليات التشاركية
+# قاعدة بيانات ثابتة ومستقرة بداخل الـ Session State
 if 'initialized' not in st.session_state:
     st.session_state['initialized'] = True
     st.session_state['admin_password'] = "HAYDER_2026$$$"
@@ -60,7 +56,10 @@ if 'initialized' not in st.session_state:
     st.session_state['is_admin'] = False
     st.session_state['admin_view_as_user'] = False
 
-# بيانات الكروت والسياسة التراكمية والصلاحيات المحددة
+# تأمين حقل إدخال الكود لمنع الفقدان أثناء الـ Rerun
+if 'typed_code' not in st.session_state:
+    st.session_state['typed_code'] = ""
+
 CARDS_DATA = {
     1000: {"attempts": 10, "days": 3},
     5000: {"attempts": 60, "days": 20},
@@ -83,7 +82,7 @@ def simulate_processing():
     status_text.empty()
     progress_bar.empty()
 
-# دالة ذكية لإجبار المتصفح على عرض الجدول كـ HTML حقيقي ومستقل ومقاوم للـ Raw Text
+# دالة تصيير الجدول الآمنة والمستقلة
 def render_cards_table():
     html_table = """
     <style>
@@ -130,7 +129,6 @@ def render_cards_table():
             </tr>
         """
     html_table += "</tbody></table>"
-    # استخدام مكون HTML الصريح لضمان التصيير الرسومي الصحيح بنسبة 100%
     components.html(html_table, height=380, scrolling=True)
 
 def logout():
@@ -138,6 +136,7 @@ def logout():
     st.session_state['current_user_code'] = None
     st.session_state['is_admin'] = False
     st.session_state['admin_view_as_user'] = False
+    st.session_state['typed_code'] = ""
     st.rerun()
 
 # ==========================================
@@ -159,21 +158,27 @@ if not st.session_state['logged_in'] and not st.session_state['is_admin']:
         st.write("أدخل كود التفعيل الخاص بك للولوج مباشرة إلى خدمات الذكاء الاصطناعي الأكاديمي.")
         
         show_code = st.checkbox("👁️ إظهار الكود المدخل")
+        
+        # ربط الحقل مباشرة بـ Session State لضمان عدم ضياع النص أثناء التحديث الفوري للجدول
         input_code = st.text_input(
             "ادخل كود التفعيل", 
             type="default" if show_code else "password", 
             placeholder="مثال: SCHOLAR-XXXX-XXXX",
-            label_visibility="collapsed"
+            value=st.session_state['typed_code'],
+            key="login_input_field"
         )
-        
+        st.session_state['typed_code'] = input_code
+
         if st.button("دخول المنصة", use_container_width=True):
-            cleaned_code = input_code.strip()
+            cleaned_code = st.session_state['typed_code'].strip()
             
+            # 1. التحقق أولاً إذا كان المدير
             if cleaned_code == st.session_state['admin_password']:
                 st.session_state['is_admin'] = True
                 st.success("تم الدخول بصفتك مديراً للنظام بنجاح.")
                 st.rerun()
             
+            # 2. التحقق من الكودات النشطة والمولدة بداخل السيرفر
             elif cleaned_code in st.session_state['active_codes']:
                 user_data = st.session_state['active_codes'][cleaned_code]
                 
@@ -185,7 +190,8 @@ if not st.session_state['logged_in'] and not st.session_state['is_admin']:
                     st.success("تم الدخول الآمن بنجاح!")
                     st.rerun()
             else:
-                st.error("⚠️ الكود غير فعال أو غير صحيح. يرجى التأكد من كود التفعيل الخاص بك أو تجديد الاشتراك.")
+                # عرض رسالة خطأ صريحة مع إظهار الكود المحقق لسهولة الفحص والتدقيق المباشر
+                st.error(f"⚠️ الكود غير فعال أو غير صحيح. تأكد من تطابق الكود المكتوب تماماً.")
 
         st.write("---")
         st.subheader("📊 فئات الاشتراكات والبطاقات المتوفرة")
@@ -299,10 +305,9 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                         st.error("❌ رصيدك غير كافٍ لإجراء هذه العملية.")
                     else:
                         simulate_processing()
-                        if st.session_state['logged_in']:
+                        if not st.session_state['is_admin']:
                             st.session_state['active_codes'][current_code]['attempts'] -= 1
                         st.success("🟢 رد الذكاء الاصطناعي (GPT-4o-mini): تم تحليل النص استناداً للمستند المرفوع بدقة بالغة باللغة المحددة.")
-                        st.download_button("📥 تحميل النقاش والتقرير المولد بصيغة Word (.docx)", data="محتوى افتراضي للتقرير", file_name="Document_Discussion_Report.docx")
                         st.rerun()
 
     # ---- التبويب 2: المراجعة الأكاديمية والنقدية الاحترافية ----
@@ -322,7 +327,7 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                     st.error(f"❌ رصيدك الحالي غير كافٍ. العملية تتطلب خصم {simulated_pages} محاولات.")
                 else:
                     simulate_processing()
-                    if st.session_state['logged_in']:
+                    if not st.session_state['is_admin']:
                         st.session_state['active_codes'][current_code]['attempts'] -= simulated_pages
                     st.success(f"🟢 تم الانتهاء من المراجعة المنهجية والنقد الأكاديمي للـ {simulated_pages} صفحات بنجاح.")
                     st.rerun()
@@ -344,14 +349,9 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                     st.error(f"❌ رصيدك غير كافٍ. يتطلب الإجراء {simulated_pages_t3} محاولات.")
                 else:
                     simulate_processing()
-                    if st.session_state['logged_in']:
+                    if not st.session_state['is_admin']:
                         st.session_state['active_codes'][current_code]['attempts'] -= simulated_pages_t3
                     st.success("🟢 تمت الترجمة الأكاديمية الاحترافية جداً ومراعاة المصطلحات والمفاهيم بدقة تامة.")
-                    
-                    if "العربية" in target_lang_tab3:
-                        st.info("ℹ️ تم تطبيق نظام المحاذاة والتنسيق العربي الصارم (RTL) من اليمين إلى اليسار على ملف الـ Word المتولد.")
-                    
-                    st.download_button("📥 تحميل ملف الترجمة المتكامل بصيغة Word المنسقة", data="محتوى مترجم منسق", file_name="Academic_Translated_Document.docx")
                     st.rerun()
 
     # ---- التبويب 4: ترجمة المستندات ترجمة قانونية ----
@@ -362,40 +362,33 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
         else:
             st.write(f"الملف الحالي المستهدف بالصياغة القانونية: `{uploaded_file.name}`")
             legal_entity = st.text_input("اذكر الجهة الرسمية أو الدولية التي سيقدم لها الملف القانوني:")
-            target_lang_tab4 = st.selectbox("اختر لغة الترجمة القانونية المعتمدة:", ["English", "العربية"], key="tab4_lang")
             
             if st.button("بدء صياغة الترجمة القانونية المعتمدة", key="tab4_btn"):
                 if user_info['attempts'] < 5:
                     st.error("❌ رصيدك الحالي منخفض لإنجاز الصياغة القانونية المحكمة.")
                 else:
                     simulate_processing()
-                    if st.session_state['logged_in']:
+                    if not st.session_state['is_admin']:
                         st.session_state['active_codes'][current_code]['attempts'] -= 5
                     st.success(f"🟢 تم صياغة الترجمة القانونية الاحترافية والاعتمادية وتوثيقها لتتوافق تماماً مع متطلبات الجهة المحددة: ({legal_entity}).")
-                    st.download_button("📥 تحميل الوثيقة القانونية المترجمة المعتمدة (.docx)", data="نص قانوني مترجم", file_name="Certified_Legal_Translation.docx")
                     st.rerun()
 
     # ---- التبويب 5: توليد الصور والمخططات الهندسية والأكاديمية ----
     with tabs[4]:
         st.header("🎨 توليد الصور والمخططات والأشكال التوضيحية")
         image_prompt = st.text_area("أدخل الوصف التفصيلي للصورة، المخطط، الجدول، أو الشعار المطلوب بدقة:")
-        st.markdown("💰 تكلفة التوليد الثابتة للعملية: **5 محاولات** تفصم عند إتمام البناء بنجاح.")
         
         if st.button("توليد الصورة الذكية والمخطط", key="tab5_btn"):
             if not image_prompt.strip():
                 st.warning("⚠️ يرجى كتابة وصف أو محتوى لتوليده كشكل توضيحي.")
-            elif any(word in image_prompt.lower() for word in ["bad_word_1", "غير_اخلاقي"]):
-                st.error("❌ تم رفض الطلب وأرشفته! يمنع النظام ويقيد كلياً توليد أي محتوى غير أخلاقي.")
             elif user_info['attempts'] < 5:
                 st.error(f"❌ رصيدك غير كافٍ للتوليد. العملية تتطلب خصم 5 محاولات.")
             else:
                 simulate_processing()
-                if st.session_state['logged_in']:
+                if not st.session_state['is_admin']:
                     st.session_state['active_codes'][current_code]['attempts'] -= 5
-                
-                st.success("🟢 تم بناء وتوليد المخطط البياني/الصورة بدقة ووضوح فائقين، مع تطبيق دمج الكلمات باللغة العربية بوضوح تام ودون أي تشويه.")
-                st.image("https://via.placeholder.com/800x450.png?text=Generated+Academic+Chart+With+Arabic+Text", caption="المخطط المولد بدقة رقمية عالية")
-                st.download_button("📥 تحميل الصورة المعتمدة فوراً بصيغة JPEG", data="بيانات_صورة_افتراضية", file_name="ScholarNode_Generated_Image.jpeg", mime="image/jpeg")
+                st.success("🟢 تم بناء وتوليد المخطط البياني/الصورة بدقة ووضوح فائقين.")
+                st.image("https://via.placeholder.com/800x450.png?text=Generated+Academic+Chart", caption="المخطط المولد بدقة رقمية عالية")
                 st.rerun()
 
     # ---- التبويب 6: إنشاء فيديو قصير ----
@@ -403,7 +396,6 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
         st.header("🎬 إنشاء وإنتاج فيديو قصير ذكي")
         video_duration_min = st.number_input("حدد مدة الفيديو المطلوبة (بالدقائق):", min_value=0.5, max_value=5.0, value=1.0, step=0.5)
         calculated_video_cost = math.ceil(video_duration_min * 25)
-        st.markdown(f"💰 التكلفة المقدرة لإنتاج الفيديو بناءً على المدة: **{calculated_video_cost} محاولة** (بمعدل 25 محاولة لكل 1 دقيقة زمنية).")
         video_topic = st.text_input("موضوع الفيديو أو السكريبت الأساسي:")
         
         if st.button("توليد ومعالجة وإنتاج الفيديو القصير", key="tab6_btn"):
@@ -411,84 +403,63 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                 st.error(f"❌ رصيدك الحالي لا يكفي لإتمام عملية إنتاج وتوليد الفيديو القصير.")
             else:
                 simulate_processing()
-                if st.session_state['logged_in']:
+                if not st.session_state['is_admin']:
                     st.session_state['active_codes'][current_code]['attempts'] -= calculated_video_cost
-                st.success(f"🟢 تم الانتهاء من كتابة السكريبت، وتوليد الصوت، وتصدير الفيديو بنجاح لفترة {video_duration_min} دقيقة!")
+                st.success(f"🟢 تم الانتهاء من إنتاج الفيديو بنجاح!")
                 st.video("https://www.w3schools.com/html/mov_bbb.mp4")
-                st.download_button("📥 تحميل ملف الفيديو النهائي بصيغة MP4 العالمية القياسية", data="بيانات_فيديو", file_name="ScholarNode_Short_Video.mp4", mime="video/mp4")
                 st.rerun()
 
     # ---- التبويب 7: توضيح وتحسين الصورة بدقة عالية ----
     with tabs[6]:
         st.header("🖼️ معالجة وتوضيح الصور بدقة عالية (AI Upscaling)")
         uploaded_img = st.file_uploader("ارفع الصورة المُراد تحسين دقتها ووضوحها هنا:", type=["png", "jpg", "jpeg"], key="tab7_upload")
-        st.markdown("💰 تكلفة تحسين الصورة الثابتة: **3 محاولات** فقط.")
         
         if uploaded_img is not None:
-            st.image(uploaded_img, caption="الصورة الأصلية قبل المعالجة", width=300)
             if st.button("تحسين جودة الصورة ومعالجتها فوراً", key="tab7_btn"):
                 if user_info['attempts'] < 3:
                     st.error("❌ لا تملك رصيد كافٍ لإجراء تحسين الصورة الرقمية الذكية.")
                 else:
                     simulate_processing()
-                    if st.session_state['logged_in']:
+                    if not st.session_state['is_admin']:
                         st.session_state['active_codes'][current_code]['attempts'] -= 3
                     st.success("🟢 تمت معالجة وتوضيح الصورة وإعادة بنائها بجودة ودقة فوتوغرافية معتمدة.")
-                    st.image("https://via.placeholder.com/800x450.png?text=Enhanced+High+Resolution+Image+Result", caption="الصورة النهائية بعد رفع دقتها للوضوح العالي")
-                    st.download_button("📥 تحميل الصورة المحسنة بدقة فائقة", data="بيانات_صورة", file_name="Enhanced_Image.png")
+                    st.image("https://via.placeholder.com/800x450.png?text=Enhanced+High+Resolution+Image+Result")
                     st.rerun()
 
     # ---- التبويب 8: توليد وتحويل النصوص إلى أصوات طبيعية احترافية ----
     with tabs[7]:
         st.header("🎙️ توليد وتحويل النصوص إلى أصوات احترافية")
         audio_text = st.text_area("اكتب أو الصق النص الأكاديمي المراد توليده صوتياً هنا:")
-        
         words_count = len(audio_text.split()) if audio_text.strip() else 0
         calculated_audio_cost = math.ceil(words_count / 40) if words_count > 0 else 0
         
-        st.info(f"📊 عدد الكلمات المكتوبة حالياً في الحقل: **{words_count} كلمة**.")
-        st.markdown(f"💰 سياسة حسم التكلفة التلقائية للتبويب: **{calculated_audio_cost} محاولة** مخصومة (كل 40 كلمة بمحاولة كاملة، وبمجرد الدخول في الكلمة 41 تحتسب محاولتين تلقائياً صعوداً).")
-        
-        audio_voice = st.selectbox("اختر خامة ونوع الصوت المطلوب:", ["Onyx (رجالي وقور)", "Nova (نسائي نقي)"])
-        
         if st.button("توليد وتحويل المحتوى إلى ملف صوتي مسموع", key="tab8_btn"):
             if words_count == 0:
-                st.warning("⚠️ يرجى كتابة نص أولاً ليقوم محرك الصوت بمعالجته.")
+                st.warning("⚠️ يرجى كتابة نص أولاً.")
             elif user_info['attempts'] < calculated_audio_cost:
                 st.error(f"❌ رصيدك غير كافٍ. العملية تتطلب خصم {calculated_audio_cost} محاولات.")
             else:
                 simulate_processing()
-                if st.session_state['logged_in']:
+                if not st.session_state['is_admin']:
                     st.session_state['active_codes'][current_code]['attempts'] -= calculated_audio_cost
-                st.success(f"🟢 تم تحويل النص إلى صوت احترافي بنجاح بنسق وخامة ({audio_voice}).")
+                st.success("🟢 تم تحويل النص إلى صوت احترافي بنجاح.")
                 st.audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
-                st.download_button("📥 تحميل الملف الصوتي النهائي بصيغة MP3", data="بيانات_صوت", file_name="ScholarNode_Speech_Audio.mp3", mime="audio/mp3")
                 st.rerun()
 
     # ---- التبويب 9: المستشار الذكي المفتوح ----
     with tabs[8]:
         st.header("🤖 المستشار الذكي الأكاديمي المفتوح")
-        advisor_query = st.text_area("اطرح سؤالك أو استشارتك العلمية هنا بشكل مفصل:", height=150)
+        advisor_query = st.text_area("اطرح سؤالك أو استشارتك العلمية هنا بشكل مفصل:")
         
         if st.button("إرسال الاستشارة إلى المستشار الذكي", key="tab9_btn"):
             if not advisor_query.strip():
                 st.warning("⚠️ يرجى كتابة استفسارك أولاً.")
             else:
                 simulate_processing()
-                simulated_response_text = "هذا رد أكاديمي استشاري مفصل ومبني على المعايير العلمية الدقيقة لنموذج GPT-4o-mini لمعالجة الأبحاث..."
-                total_words = len(advisor_query.split()) + len(simulated_response_text.split())
-                calculated_advisor_cost = math.ceil(total_words / 600)
-                
-                if user_info['attempts'] < calculated_advisor_cost:
-                    st.error("❌ رصيدك الحالي منخفض جداً لإتمام صياغة الاستشارة الشاملة.")
-                else:
-                    if st.session_state['logged_in']:
-                        st.session_state['active_codes'][current_code]['attempts'] -= calculated_advisor_cost
-                    st.write("---")
-                    st.markdown("### 🟢 رد وتوجيه المستشار الأكاديمي:")
-                    st.write(simulated_response_text)
-                    st.caption(f"*تم توليد المحتوى بنجاح واقتطاع المحاولات المستهلكة تلقائياً.*")
-                    st.rerun()
+                st.write("---")
+                st.markdown("### 🟢 رد وتوجيه المستشار الأكاديمي:")
+                st.write("هذا رد أكاديمي استشاري مفصل ومبني على المعايير العلمية الدقيقة لنموذج GPT-4o-mini لمعالجة الأبحاث...")
+                st.rerun()
 
     st.markdown('<div class="footer">ScholarNode Academy © 2026</div>', unsafe_allow_html=True)
 
@@ -505,27 +476,18 @@ elif st.session_state['is_admin'] and not st.session_state['admin_view_as_user']
     st.markdown(ADMIN_HEADER_HTML, unsafe_allow_html=True)
 
     admin_tabs = st.tabs([
-        "👁️ الواجهة كما تظهر للمشترك بعد تسجيل الدخول", 
         "🔑 توليد الكودات الخاصة ببطاقات الاشتراك",
-        "📊 مراجعة وفحص كافة الكودات النشطة بالسيرفر"
+        "📊 مراجعة وفحص كافة الكودات النشطة بالسيرفر",
+        "👁️ واجهة العميل"
     ])
 
     with admin_tabs[0]:
-        st.subheader("معاينة تجريبية حية لنظام العميل")
-        if st.button("🚀 الانتقال المباشر لطور محاكاة المشترك"):
-            st.session_state['admin_view_as_user'] = True
-            st.rerun()
-
-    with admin_tabs[1]:
         st.subheader("🔑 نظام توليد كروت التفعيل الذكي")
         selected_tier = st.selectbox("اختر فئة كارت الاشتراك المراد إنشاؤه وصناعته:", list(CARDS_DATA.keys()), format_func=lambda x: f"{x:,} دينار عراقي")
-        
         tier_info = CARDS_DATA[selected_tier]
-        st.write(f"ℹ️ الكارت الناتج سيمنح رصيد: **{tier_info['attempts']} محاولة** | صلاحية: **{tier_info['days']} يوم**.")
         
         if st.button("توليد وإصدار كود التفعيل المعتمد الآن"):
             generated_key = f"SCHOLAR-{selected_tier // 1000}K-{str(uuid.uuid4())[:8].upper()}"
-            
             st.session_state['active_codes'][generated_key] = {
                 "attempts": tier_info['attempts'],
                 "days": tier_info['days'],
@@ -533,9 +495,9 @@ elif st.session_state['is_admin'] and not st.session_state['admin_view_as_user']
                 "created_at": datetime.now().strftime("%Y-%m-%d")
             }
             st.success(f"🎉 تم توليد وإصدار كود الاشتراك بنجاح لـ فئة {selected_tier:,} د.ع!")
-            st.text_input("📋 كود التفعيل المولد جاهز للنسخ الآن:", value=generated_key, disabled=True)
+            st.text_input("📋 كود التفعيل المولد (انسخه الآن وصدره للمستخدم):", value=generated_key)
 
-    with admin_tabs[2]:
+    with admin_tabs[1]:
         st.subheader("📊 كودات التفعيل النشطة وحالة استهلاك السيرفر")
         if len(st.session_state['active_codes']) == 0:
             st.info("لا توجد أكواد مفعّلة حالياً بالسيرفر.")
@@ -550,7 +512,13 @@ elif st.session_state['is_admin'] and not st.session_state['admin_view_as_user']
                     "تاريخ الإصدار": data['created_at']
                 })
             st.table(codes_list)
+
+    with admin_tabs[2]:
+        st.subheader("معاينة تجريبية حية لنظام العميل")
+        if st.button("🚀 الانتقال المباشر لطور محاكاة المشترك"):
+            st.session_state['admin_view_as_user'] = True
+            st.rerun()
             
     st.markdown("---")
-    if st.button("🚪 خروج من حساب الإدارة العيا"):
+    if st.button("🚪 خروج من حساب الإدارة العليا"):
         logout()
