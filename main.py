@@ -280,17 +280,12 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                 st.success("تم تسجيل الخروج.")
 
     st.markdown("### 📁 مركز رفع ومعالجة المستندات والبحوث")
-    uploaded_file = st.file_uploader(
-        "شريط التحميل الموحد (يدعم PDF, Word, وصور بجميع أنواعها)", 
-        type=["pdf", "docx", "doc", "png", "jpg", "jpeg"],
-        accept_multiple_files=False
-    )
-
-    # معالجة الملف حقيقياً واستخراج محتواه النصي بمجرد رفعه من قبل الطالب
-    extracted_content = ""
-    if uploaded_file is not None:
-        st.success(f"✔️ تم استقبال وقراءة ملف ({uploaded_file.name}) بنجاح وهو جاهز للتحليل الحقيقي بالأسفل.")
-        extracted_content = extract_text_from_file(uploaded_file)
+uploaded_file = st.file_uploader("شريط التحميل الموحد (يدعم PDF, Word, وصور بجميع أنواعها)", type=["pdf", "docx", "doc", "png", "jpg", "jpeg"], accept_multiple_files=False, key="main_file_uploader")
+# معالجة الملف حقيقياً واستخراج محتواه النصي بمجرد رفعه من قبل الطالب
+extracted_content = ""
+if uploaded_file is not None:
+    st.success(f"✔️ تم استقبال وقراءة ملف ({uploaded_file.name}) بنجاح وهو جاهز للتحليل الحقيقي بالأسفل.")
+    extracted_content = extract_text_from_file(uploaded_file)
 
     st.markdown("---")
     st.markdown("### 🛠️ التبويبات والخدمات الأكاديمية المتطورة")
