@@ -282,8 +282,11 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
     st.markdown("### 📝 مركز معالجة النصوص والبحوث الأكاديمية")
     st.info("💡 لتفادي مشاكل تعليق السيرفر: يرجى نسخ نص بحثك أو مستندك (من الـ PDF أو Word) ولصقه في الصندوق أدناه مباشرة.")
     
-    # صندوق اللصق السريع والآمن المرتبط بالتبويبات
+    # صندوق اللصق السريع والآمن
     user_text_input = st.text_area("ضع نص المستند أو البحث هنا للتحليل والمعالجة:", height=250, key="academic_text_area")
+    
+    # الخدعة البرمجية: تعريف المتغير القديم وهمياً لإنقاذ التبويبات بالأسفل من الـ NameError
+    uploaded_file = None
     
     if 'extracted_content' not in st.session_state:
         st.session_state['extracted_content'] = ""
