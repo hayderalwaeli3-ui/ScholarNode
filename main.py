@@ -219,7 +219,7 @@ if not st.session_state['logged_in'] and not st.session_state['is_admin']:
     st.markdown('<div class="footer">ScholarNode Academy © 2026</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 3. واجهة المستخدم بعد تسجيل الدخول
+# 3. واجهة المستخدم بعد تسجيل الدخول (تم تنظيفها تماماً)
 # ==========================================
 elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.session_state['admin_view_as_user']):
     
@@ -283,7 +283,7 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
 
     st.markdown("### 🛠️ الخدمات الأكاديمية المتطورة")
 
-    # إنشاء التبويبات مباشرة (المنطقة العلوية نظيفة تماماً الآن)
+    # كتلة التبويبات الرسمية والوحيدة في التطبيق
     tabs = st.tabs([
         "📖 معاينة ومناقشة المستند", 
         "🔍 المراجعة الأكاديمية والنقد", 
@@ -300,14 +300,12 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
     with tabs[0]:
         st.header("📖 معاينة ومناقشة المستند")
         
-        # تقسيم داخلي لأشرطة الرفع بناءً على اقتراحك المنفصل
         col_pdf1, col_word1 = st.columns(2)
         with col_pdf1:
             pdf_file1 = st.file_uploader("📥 تحميل ملف البحث بصيغة PDF", type=["pdf"], key="pdf_t1")
         with col_word1:
             word_file1 = st.file_uploader("📥 تحميل ملف البحث بصيغة Word", type=["docx", "doc"], key="word_t1")
         
-        # التحقق من الملف المرفوع داخل التبويب
         active_text = ""
         if pdf_file1 is not None:
             active_text = read_pdf_bytes(pdf_file1)
@@ -503,8 +501,6 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
     # ---- التبويب 7: توضيح وتحسين الصورة بدقة عالية ----
     with tabs[6]:
         st.header("🖼️ معالجة وتوضيح الصور بدقة عالية (AI Upscaling)")
-        
-        # شريط رفع الصور يظهر فقط هنا بالداخل ومختفي من أي مكان آخر
         img_file7 = st.file_uploader("📥 تحميل ملف المخطط أو الصورة المراد معالجتها وتكبيرها", type=["png", "jpg", "jpeg"], key="img_t7")
         
         if img_file7 is not None:
@@ -538,7 +534,7 @@ elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.sessi
                         
                     if not st.session_state['is_admin']:
                         st.session_state['active_codes'][current_code]['attempts'] -= 5
-                    st.success("🟢 تم تحويل النص إلى صوت بشري طبيعي حقيقي بنجاح!")
+                    st.success("🟢 تم تحويل النص إلى صوت بشرى طبيعي حقيقي بنجاح!")
                     st.audio("temp_output.mp3")
                 except Exception as e:
                     st.error(f"❌ حدث خطأ في معالجة الصوت: {e}")
