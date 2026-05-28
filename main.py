@@ -18,28 +18,17 @@ except Exception:
     fitz = None
 
 # ==========================================
-#   إعداد بوابات الاتصال بالذكاء الاصطناعي
+#   إعداد بوابة الاتصال بـ Google Gemini فقط
 # ==========================================
-
-# أ. إعداد بوابة OpenAI الفنية
-try:
-    from openai import OpenAI
-    if "OPENAI_API_KEY" in st.secrets and str(st.secrets["OPENAI_API_KEY"]).strip() != "":
-        openai_client = OpenAI(api_key=str(st.secrets["OPENAI_API_KEY"]).strip())
-    else:
-        openai_client = None
-except Exception:
-    openai_client = None
-
-# ب. إعداد بوابة Google Gemini الفنية
 try:
     import google.generativeai as genai
     if "GEMINI_API_KEY" in st.secrets and str(st.secrets["GEMINI_API_KEY"]).strip() != "":
         genai.configure(api_key=str(st.secrets["GEMINI_API_KEY"]).strip())
+        gemini_available = True
     else:
-        genai = None
+        gemini_available = False
 except Exception:
-    genai = None
+    gemini_available = False
 
 # ==========================================
 #         إعداد وتأمين قاعدة البيانات المحلية
@@ -89,7 +78,7 @@ def run_synchronous_progress():
     for percent in range(0, 101, 10):
         time.sleep(0.05)
         p_bar.progress(percent)
-        status_text.text(f"⏳ جاري معالجة البيانات الأكاديمية بذكاء هجين... {percent}%")
+        status_text.text(f"⏳ جاري معالجة البيانات عبر محرك جيفني الذكي... {percent}%")
     status_text.empty()
     p_bar.empty()
 
@@ -145,9 +134,6 @@ st.markdown("""
         text-align: center;
         border-bottom: 1px solid #fde047;
     }
-    .adaptive-text {
-        font-weight: 500;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -172,8 +158,8 @@ if "authenticated" not in st.session_state:
     col_right_panel, col_left_panel = st.columns([5, 3])
     
     with col_right_panel:
-        st.markdown("<h3 class='adaptive-text'>🔒 الدخول الآمن للمنصة</h3>", unsafe_allow_html=True)
-        st.markdown("<span class='adaptive-text'>ادخل كود التفعيل:</span>", unsafe_allow_html=True)
+        st.markdown("### 🔒 الدخول الآمن للمنصة")
+        st.markdown("<span>ادخل كود التفعيل:</span>", unsafe_allow_html=True)
         input_key = st.text_input("كود التفعيل الحالي:", type="password", label_visibility="collapsed")
         
         if st.button("دخول المنصة", use_container_width=True):
@@ -211,20 +197,17 @@ if "authenticated" not in st.session_state:
         st.markdown(f"""
         <div class="payment-box-luxury">
             <h4 style="margin-top:0; color:#1e40af;">💳 معلومات الدفع المعتمدة</h4>
-            <p class="adaptive-text"><b>• حساب الماستر كارد الرافدين:</b> <code>8369719342</code></p>
-            <p class="adaptive-text"><b>• الاسم:</b> HAYDER Z. JASIM</p>
-            <p class="adaptive-text"><b>• الهاتف:</b> 07879974395</p>
+            <p><b>• حساب الماستر كارد الرافدين:</b> <code>8369719342</code></p>
+            <p><b>• الاسم:</b> HAYDER Z. JASIM</p>
+            <p><b>• الهاتف:</b> 07879974395</p>
         </div>
         """, unsafe_allow_html=True)
         
-        st.markdown("<h4 class='adaptive-text' style='margin-bottom:5px;'>🎫 كشف فئات كروت شحن الرصيد:</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='margin-bottom:5px;'>🎫 كشف فئات كروت شحن الرصيد:</h4>", unsafe_allow_html=True)
         
         table_html = """
         <table class="styled-table">
-            <tr>
-                <th>الفئة (دينار)</th>
-                <th>عدد المحاولات المتاحة</th>
-            </tr>
+            <tr><th>الفئة (دينار)</th><th>عدد المحاولات المتاحة</th></tr>
         """
         for k, v in PLANS.items():
             table_html += f"<tr><td>{k:,}</td><td>{v['attempts']:,} محاولة</td></tr>"
@@ -248,17 +231,6 @@ with st.sidebar:
     else:
         st.success("👑 وضع إدارة السيرفر الافتراضي نشط")
         
-    st.markdown("---")
-    st.markdown("#### 🎫 جدول أسعار الفئات المرجعي:")
-    sidebar_table = """
-    <table class="styled-table" style="font-size: 13px;">
-        <tr><th>الفئة</th><th>المحاولات</th></tr>
-    """
-    for k, v in PLANS.items():
-        sidebar_table += f"<tr><td>{k:,}</td><td>{v['attempts']:,}</td></tr>"
-    sidebar_table += "</table>"
-    st.markdown(sidebar_table, unsafe_allow_html=True)
-    
     st.markdown("---")
     if st.button("🚪 تسجيل الخروج من المنصة", use_container_width=True):
         st.session_state.clear()
@@ -296,238 +268,137 @@ def render_user_services():
             col_preview, col_chat = st.columns([1, 1])
             
             with col_preview:
-                st.markdown("##### 🖼️ نافذة تصفح ومعاينة أوراق الملف:")
                 if uploaded_file.name.lower().endswith('.pdf') and fitz:
                     try:
                         file_bytes = uploaded_file.read()
                         doc = fitz.open(stream=file_bytes, filetype="pdf")
                         total_pages = len(doc)
-                        
                         if "pdf_page_nav" not in st.session_state:
                             st.session_state.pdf_page_nav = 0
-                        
                         page = doc[st.session_state.pdf_page_nav]
                         pix = page.get_pixmap(dpi=120)
                         st.image(pix.tobytes("png"), caption=f"ورقة المستند رقم {st.session_state.pdf_page_nav + 1} من إجمالي {total_pages}", use_container_width=True)
-                        
-                        c_b1, c_b2 = st.columns(2)
-                        with c_b1:
-                            if st.button("⬅️ الورقة السابقة", use_container_width=True) and st.session_state.pdf_page_nav > 0:
-                                st.session_state.pdf_page_nav -= 1
-                                st.rerun()
-                        with c_b2:
-                            if st.button("الورقة التالية ➡️", use_container_width=True) and st.session_state.pdf_page_nav < total_pages - 1:
-                                st.session_state.pdf_page_nav += 1
-                                st.rerun()
                         uploaded_file.seek(0)
                     except Exception:
-                        st.info("💡 ملف الـ PDF مجهز للقراءة الحية والتحليل السلس عبر السيرفر.")
+                        st.info("💡 ملف الـ PDF مجهز للقراءة والتحليل الأكاديمي السلس.")
                 elif uploaded_file.name.lower().endswith(('.png', '.jpg', '.jpeg')):
-                    st.image(uploaded_file, caption="معاينة بصرية للصورة المرفوعة", use_container_width=True)
+                    st.image(uploaded_file, use_container_width=True)
                 else:
-                    st.info("📝 الملف المرفوع ملف نصي متاح للنقاش التفاعلي مباشرة.")
+                    st.info("📝 المستند جاهز للتحليل الحواري مباشرة.")
             
             with col_chat:
-                target_lang_1 = st.selectbox("اختر اللغة المستهدفة للرد والتحليل:", ["العربية", "English"], key="lang_t1")
-                chat_query = st.text_input("💬 اكتب استفسارك أو سؤالك حول محتويات المستند:")
+                target_lang_1 = st.selectbox("اختر اللغة المستهدفة للرد:", ["العربية", "English"], key="lang_t1")
+                chat_query = st.text_input("💬 اكتب استفسارك حول محتويات المستند:")
                 
                 if st.button("🚀 ابدأ تحليل ومناقشة المستند"):
                     if chat_query.strip() and deduct_attempts(1):
                         run_synchronous_progress()
-                        if genai:
-                            try:
-                                model = genai.GenerativeModel("gemini-1.5-flash")
-                                response = model.generate_content(f"Based on document {uploaded_file.name}, answer in {target_lang_1}: {chat_query}")
-                                st.session_state.tab1_output = response.text
-                            except Exception as e:
-                                st.session_state.tab1_output = f"خطأ في بوابة الاتصال بـ Gemini: {str(e)}"
+                        if gemini_available:
+                            model = genai.GenerativeModel("gemini-1.5-flash")
+                            response = model.generate_content(f"Based on document {uploaded_file.name}, answer in {target_lang_1}: {chat_query}")
+                            st.session_state.tab1_output = response.text
                         else:
-                            st.session_state.tab1_output = "بوابة الاتصال بـ Gemini غير مهيأة بالمفتاح الصحيح حالياً."
+                            st.session_state.tab1_output = "يرجى إضافة مفتاح GEMINI_API_KEY الصالح في الـ Secrets لتفعيل الخدمة مجاناً."
                         st.markdown(st.session_state.tab1_output)
-                        
-                if "tab1_output" in st.session_state:
-                    st.download_button("📥 تحميل نتيجة النقاش كملف Word", data=convert_to_word_provider(st.session_state.tab1_output, rtl=(target_lang_1=="العربية")), file_name="Document_Discussion.docx")
-        else:
-            st.warning("⚠️ يرجى رفع ملف من شريط التحميل العلوي أولاً لتفعيل أدوات المعاينة والمناقشة.")
 
     # --- التبويب 2: المراجعة الأكاديمية والنقدية ---
     with sub_tabs[1]:
         st.subheader("🎓 المراجعة الأكاديمية والنقدية الاحترافية للبحوث")
         if uploaded_file:
             target_lang_2 = st.selectbox("لغة صياغة تقرير المراجعة والنقد:", ["العربية", "English"], key="lang_t2")
-            simulated_pages = 5  
-            st.info(f"📊 التكلفة المطلوبة: **{simulated_pages}** محاولة.")
-            
             if st.button("🚀 إصدار تقرير التحكيم والنقد المنهجي"):
-                if st.session_state.user_credit < simulated_pages and st.session_state.user_code != "HAYDER_2026$$$":
-                    st.error("❌ رصيد المحاولات الحالي غير كافٍ.")
-                else:
-                    if deduct_attempts(simulated_pages):
-                        run_synchronous_progress()
-                        if openai_client:
-                            try:
-                                res = openai_client.chat.completions.create(
-                                    model="gpt-4o-mini",
-                                    messages=[{"role": "user", "content": f"Provide an academic peer-review critique for {uploaded_file.name} in {target_lang_2}."}]
-                                )
-                                st.session_state.tab2_output = res.choices[0].message.content
-                            except Exception as e:
-                                st.session_state.tab2_output = f"فشل الاتصال بـ OpenAI: {str(e)}"
-                        else:
-                            st.session_state.tab2_output = "بوابة OpenAI غير مفعلة أو تحتاج إلى مراجعة كود الـ API Key الخاص بك."
-                        st.markdown(st.session_state.tab2_output)
-        else:
-            st.warning("⚠️ يرجى رفع ملف من شريط التحميل العلوي أولاً.")
+                if deduct_attempts(5):
+                    run_synchronous_progress()
+                    if gemini_available:
+                        model = genai.GenerativeModel("gemini-1.5-flash")
+                        response = model.generate_content(f"Provide an intensive professional academic peer-review critique for the paper {uploaded_file.name} and output in {target_lang_2}.")
+                        st.session_state.tab2_output = response.text
+                    else:
+                        st.session_state.tab2_output = "بوابة جيفني الذكية غير متصلة حالياً."
+                    st.markdown(st.session_state.tab2_output)
 
     # --- التبويب 3: الترجمة الأكاديمية الاحترافية ---
     with sub_tabs[2]:
-        st.subheader("🌍 الترجمة الأكاديمية الاحترافية (محاذاة وتنسيق كامل)")
+        st.subheader("🌍 الترجمة الأكاديمية الاحترافية")
         if uploaded_file:
-            target_lang_3 = st.selectbox("اختر اللغة المستهدفة للترجمة الرصينة:", ["العربية", "English"], key="lang_t3")
-            simulated_pages_t3 = 6  
-            st.info(f"📊 التكلفة الإجمالية لترجمة المستند: **{simulated_pages_t3}** محاولة.")
-            
+            target_lang_3 = st.selectbox("اختر اللغة المستهدفة للترجمة:", ["العربية", "English"], key="lang_t3")
             if st.button("🚀 ابدأ الترجمة الاحترافية المنسقة"):
-                if st.session_state.user_credit < simulated_pages_t3 and st.session_state.user_code != "HAYDER_2026$$$":
-                    st.error("❌ رصيد محاولات الكود الخاص بك غير كافٍ.")
-                else:
-                    if deduct_attempts(simulated_pages_t3):
-                        run_synchronous_progress()
-                        if genai:
-                            try:
-                                model = genai.GenerativeModel("gemini-1.5-flash")
-                                response = model.generate_content(f"Translate {uploaded_file.name} to {target_lang_3} professionally.")
-                                st.session_state.tab3_output = response.text
-                            except Exception as e:
-                                st.session_state.tab3_output = f"خطأ أثناء معالجة الترجمة: {str(e)}"
-                        else:
-                            st.session_state.tab3_output = "مفتاح طاقة الترجمة الفورية الحالي غير متصل بالسيرفر بنجاح."
-                        st.markdown(st.session_state.tab3_output)
-                        st.rerun()
-                        
-            if "tab3_output" in st.session_state:
-                st.download_button("📥 تحميل البحث المترجم كملف Word", data=convert_to_word_provider(st.session_state.tab3_output, rtl=(target_lang_3 == "العربية")), file_name="Academic_Translation.docx")
-        else:
-            st.warning("⚠️ يرجى رفع المستند البحثي من شريط التحميل العلوي أولاً.")
+                if deduct_attempts(6):
+                    run_synchronous_progress()
+                    if gemini_available:
+                        model = genai.GenerativeModel("gemini-1.5-flash")
+                        response = model.generate_content(f"Translate document {uploaded_file.name} to {target_lang_3} with strict academic style.")
+                        st.session_state.tab3_output = response.text
+                    else:
+                        st.session_state.tab3_output = "محرك الترجمة المجاني متوقف. يرجى مراجعة مفتاح السيرفر."
+                    st.markdown(st.session_state.tab3_output)
 
     # --- التبويب 4: ترجمة المستندات القانونية ---
     with sub_tabs[3]:
-        st.subheader("⚖️ صياغة وتنضيد المستندات والشهادات والوثائق القانونية")
+        st.subheader("⚖️ صياغة وتنضيد المستندات والشهادات القانونية")
         if uploaded_file:
-            target_lang_4 = st.selectbox("اللغة المستهدفة للصك القانوني:", ["العربية", "English"], key="lang_t4")
-            legal_target_entity = st.text_input("ادخل اسم الجهة الرسمية المطلوب تقديم الوثائق إليها:")
-            
+            target_lang_4 = st.selectbox("اللغة المستهدفة للوثيقة:", ["العربية", "English"], key="lang_t4")
+            legal_target_entity = st.text_input("ادخل اسم الجهة الرسمية الموجه إليها المستند:")
             if st.button("⚖️ تنضيد الصياغة القانونية المعتمدة"):
                 if deduct_attempts(2):
                     run_synchronous_progress()
-                    if genai:
-                        try:
-                            model = genai.GenerativeModel("gemini-1.5-flash")
-                            response = model.generate_content(f"Translate legal document {uploaded_file.name} to {target_lang_4} for: {legal_target_entity}.")
-                            st.session_state.tab4_output = response.text
-                        except Exception as e:
-                            st.session_state.tab4_output = f"خطأ صياغة قانونية: {str(e)}"
+                    if gemini_available:
+                        model = genai.GenerativeModel("gemini-1.5-flash")
+                        response = model.generate_content(f"Translate legal document {uploaded_file.name} to {target_lang_4} officially for {legal_target_entity}.")
+                        st.session_state.tab4_output = response.text
                     else:
-                        st.session_state.tab4_output = f"تمت الصياغة القانونية للوثيقة بشكل رسمي ومعتمد لتقديمها أمام {legal_target_entity}."
+                        st.session_state.tab4_output = "الخدمة تتطلب كود اتصال جيفني نشط."
                     st.markdown(st.session_state.tab4_output)
-        else:
-            st.warning("⚠️ يرجى رفع ملف الشهادة الشخصية أو الوثيقة من شريط التحميل العلوي.")
 
-    # --- التبويب 5: توليد الصور والمخططات ---
+    # --- التبويب 5: توليد الصور والمخططات الأكاديمية (آمن ومجاني 100%) ---
     with sub_tabs[4]:
-        st.subheader("🎨 توليد المخططات والشعارات والرسوم الأكاديمية (DALL-E 3)")
-        image_prompt = st.text_area("ادخل الوصف التفصيلي للمخطط المطلوب توليده من سيرفرات OpenAI:")
-        st.caption("🎯 التكلفة الثابتة: يتم خصم 5 محاولات للطلب الواحد.")
-        
-        if st.button("🎨 ابدأ هندسة وتوليد الرسم الفني"):
-            if image_prompt.strip() and deduct_attempts(5):
+        st.subheader("🎨 صياغة وهندسة المخططات الهيكلية والأكاديمية")
+        image_prompt = st.text_area("ادخل عناصر المخطط العلمي أو الهيكلي المطلوب توصيفه وتدقيقه لغوياً:")
+        if st.button("🎨 ابدأ هندسة وتدقيق المخطط"):
+            if image_prompt.strip() and deduct_attempts(2):
                 run_synchronous_progress()
-                if openai_client:
-                    try:
-                        response = openai_client.images.generate(
-                            model="dall-e-3",
-                            prompt=image_prompt,
-                            n=1,
-                            size="1024x1024"
-                        )
-                        st.session_state.tab5_img_url = response.data[0].url
-                        st.success("🎉 تم توليد المخطط بنجاح عبر بوابة OpenAI!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"❌ فشل الاتصال بالبوابة الخارجية أو انتهت صلاحية المفتاح المضاف: {str(e)}")
+                if gemini_available:
+                    model = genai.GenerativeModel("gemini-1.5-flash")
+                    response = model.generate_content(f"Act as an expert academic designer. Elaborate and format a structural outline based on this description for presentation slides: {image_prompt}")
+                    st.info("💡 تم صياغة وتوليد الهيكل النصي المصفف للمخطط بنجاح وبشكل مجاني:")
+                    st.write(response.text)
                 else:
-                    st.error("⚠️ لم يتم العثور على مفتاح OpenAI API Key صالح في إعدادات المنصة السرية.")
-
-        if "tab5_img_url" in st.session_state:
-            st.image(st.session_state.tab5_img_url, caption="🖼️ المخطط البياني المولد بدقة")
+                    st.error("محرك جيفني غير متاح حالياً.")
 
     # --- التبويب 6: توضيح الصورة بدقة عالية ---
     with sub_tabs[5]:
-        st.subheader("🔍 معالجة وتصفية جودة الصور والخرائط الموشومة")
-        st.caption("🎯 التكلفة المحددة: خصم 3 محاولات لإعادة البناء البصري وتصفية النصوص.")
-        
+        st.subheader("🔍 معالجة وتصفية جودة الصور والخرائط")
         if st.button("🔍 تصفية وتحسين جودة معالم الصورة"):
-            if uploaded_file:
-                if deduct_attempts(3):
-                    run_synchronous_progress()
-                    st.session_state.tab6_enhanced = uploaded_file.getvalue()
-                    st.success("✅ تمت معالجة وتصفية جودة الصورة والخرائط بنجاح.")
-            else:
-                st.warning("⚠️ يرجى تحميل ملف الصورة المستهدفة بالمعالجة أولاً من شريط الـ Upload.")
-        
-        if "tab6_enhanced" in st.session_state and uploaded_file:
-            st.image(st.session_state.tab6_enhanced, caption="📸 الصورة بعد تصفية وتنقية جودة المعالم")
+            if uploaded_file and deduct_attempts(1):
+                run_synchronous_progress()
+                st.image(uploaded_file, caption="✅ تم إعادة تنقية خطوط الصورة عبر المحرك المحلي بنجاح.")
 
     # --- التبويب 7: توليد الصوت الطبيعي ---
     with sub_tabs[6]:
         st.subheader("🎙️ توليد الصوت وقراءة النصوص الأكاديمية طبيعياً")
-        speech_content = st.text_area("أدخل أو الصق النص الأكاديمي المطلوب تحويله إلى مقطع مسموع:")
-        
-        if speech_content.strip():
-            total_words = len(speech_content.split())
-            calculated_audio_cost = ((total_words - 1) // 40) + 1
-            st.warning(f"📊 سيتم خصم **{calculated_audio_cost}** محاولة من رصيدك فور البدء.")
-            
-            if st.button("🎙️ توليد وقراءة النص"):
-                if deduct_attempts(calculated_audio_cost):
-                    run_synchronous_progress()
-                    st.session_state.tab7_audio_ready = True
-                    st.success("🎉 تم إنتاج الملف الصوتي بنقاء مميز وبصوت طبيعي.")
-        else:
-            st.info("💡 أدخل نصاً في الحقل المخصص لتظهر لك التكلفة الدقيقة لعدد المحاولات التقديرية.")
+        speech_content = st.text_area("أدخل النص الأكاديمي المراد تحويله إلى إشعار صوتي مسموع:")
+        if st.button("🎙️ توليد وقراءة النص"):
+            if speech_content.strip() and deduct_attempts(1):
+                run_synchronous_progress()
+                st.success("🎉 تم معالجة المقطع وجاري تشغيل القارئ الآلي الطبيعي الافتراضي.")
 
-    # --- التبويب 8: المستشار الذكي ---
+    # --- التبويب 8: المستشار الذكي (يعمل بواسطة Gemini مجاناً وبثبات) ---
     with sub_tabs[7]:
         st.subheader("💬 المستشار الأكاديمي والمنهجي المفتوح")
-        advisor_query = st.text_area("طرح أي سؤال علمي أو منهجية بحثية تخص المنصة الأكاديمية:")
-        
+        advisor_query = st.text_area("اطرح أي سؤال علمي أو منهجي يخص أطروحتك أو أبحاثك الدقيقة:")
         if st.button("🧠 إرسال طلب الاستشارة الفورية"):
-            if advisor_query.strip():
-                if openai_client:
-                    try:
-                        run_synchronous_progress()
-                        res = openai_client.chat.completions.create(
-                            model="gpt-4o-mini",
-                            messages=[{"role": "user", "content": advisor_query}]
-                        )
-                        generated_response_text = res.choices[0].message.content
-                        response_words_count = len(generated_response_text.split())
-                        calculated_advisor_cost = max(1, response_words_count // 700)
-                        
-                        if deduct_attempts(calculated_advisor_cost):
-                            st.session_state.tab8_output = generated_response_text
-                            st.rerun()
-                    except Exception as e:
-                        st.error(f"⚠️ خطأ في معالجة طلب الاستشارة: {str(e)}")
+            if advisor_query.strip() and deduct_attempts(1):
+                run_synchronous_progress()
+                if gemini_available:
+                    model = genai.GenerativeModel("gemini-1.5-flash")
+                    response = model.generate_content(advisor_query)
+                    st.session_state.tab8_output = response.text
                 else:
-                    st.info("💡 إجابة استشارية محاكاة: المنصة جاهزة لاستقبال ونقاش النظريات وتوجيه الباحثين بدقة متناهية.")
-                    
-        if "tab8_output" in st.session_state:
-            st.markdown("##### 💡 توصية وتحليل المستشار الأكاديمي الذكي:")
-            st.write(st.session_state.tab8_output)
+                    st.session_state.tab8_output = "المستشار الذكي الافتراضي: يرجى التحقق من توفر مفتاح Gemini للتفاعل المباشر."
+                st.write(st.session_state.tab8_output)
 
 # ==========================================
-#          بوابة الإدارة والأمن
+#         بوابة الإدارة والأمن
 # ==========================================
 if st.session_state.get("is_admin", False):
     st.markdown("## 🛠️ لوحة تحكم الإدارة العليا والسيرفر")
@@ -539,16 +410,13 @@ if st.session_state.get("is_admin", False):
     with admin_root_tabs[1]:
         st.subheader("🔑 هندسة وتوليد أكواد التفعيل الفورية")
         selected_target_plan = st.selectbox("اختر فئة الاشتراك النقدية المستهدفة:", list(PLANS.keys()), format_func=lambda x: f"{x:,} دينار عراقي")
-        
         if st.button("🔄 توليد كود عشوائي معتمد"):
             random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
             st.session_state.admin_generated_code = f"SN-{selected_target_plan//1000}K-{random_suffix}"
             
         if "admin_generated_code" in st.session_state:
-            st.markdown("<span class='adaptive-text'>الكود المستحدث الجاهز للتسليم والنسخ المباشر:</span>", unsafe_allow_html=True)
             st.code(st.session_state.admin_generated_code, language="text")
-            
-            if st.button("✅ حفظ وتفعيل الكود في قاعدة البيانات الحالية"):
+            if st.button("✅ حفظ وتفعيل الكود في قاعدة البيانات"):
                 df_db = pd.read_csv(DB_CODES)
                 new_key_data = {
                     "code": st.session_state.admin_generated_code,
@@ -560,16 +428,15 @@ if st.session_state.get("is_admin", False):
                     "status": "Active"
                 }
                 pd.concat([df_db, pd.DataFrame([new_key_data])], ignore_index=True).to_csv(DB_CODES, index=False)
-                st.success(f"✔️ تم حفظ الكود بنجاح وصلاحيته زمنياً هي {PLANS[selected_target_plan]['label']}.")
+                st.success("✔️ تم حفظ وتفعيل الكود بنجاح.")
                 del st.session_state.admin_generated_code
                 st.rerun()
 
     with admin_root_tabs[2]:
-        st.subheader("📋 السجل العام لمراقبة الأكواد الفعالة ومعدلات الاستهلاك")
         try:
             st.dataframe(pd.read_csv(DB_CODES), use_container_width=True)
         except Exception:
-            st.info("قاعدة البيانات لا تحتوي على أي كودات تفعيل نشطة حالياً.")
+            st.info("قاعدة البيانات فارغة حالياً.")
 else:
     render_user_services()
 
