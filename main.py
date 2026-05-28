@@ -1,6 +1,6 @@
 import streamlit as st
 
-# 1. ضبط إعدادات الصفحة لتكون مغلقة افتراضياً ومنع الوميض
+# 1. ضبط إعدادات الصفحة (مرة واحدة فقط في أعلى الملف لمنع الانهيار واللون الأحمر)
 st.set_page_config(page_title="ScholarNode Academy", layout="wide", initial_sidebar_state="expanded")
 
 # 2. حجب القائمة الجانبية فورياً بالـ CSS قبل تحميل بقية الملف
@@ -35,9 +35,9 @@ import io
 import uuid
 import random
 import string
-from datetime import datetime, timedelta
-from PIL import Image
+from datetime import datetime
 import fitz  # PyMuPDF
+from PIL import Image
 try:
     import docx
     from docx import Document
@@ -48,7 +48,6 @@ except ImportError:
     HAS_DOCX = False
 from openai import OpenAI
 import time
-import math
 
 # --- بروتوكول الحماية والربط الذكي بسيرفر OpenAI ---
 if "OPENAI_API_KEY" in st.secrets:
@@ -72,7 +71,6 @@ init_db()
 # --- وظيفة إنشاء ملف Word بتنسيق أكاديمي رصين من الكود المستقر ---
 def create_word_file(text):
     if not HAS_DOCX:
-        # حل بديل إذا لم تكن الحزمة مثبتة لمنع الانهيار
         return io.BytesIO(text.encode('utf-8'))
     doc = Document()
     style = doc.styles['Normal']
@@ -88,7 +86,7 @@ def create_word_file(text):
 
 # --- وظائف الخصم والحماية من الكود المستقر ---
 def deduct_attempt(amount=1):
-    if st.session_state.code == "HAYDER_2026":
+    if st.session_state.get('code') == "HAYDER_2026":
         return True
     try:
         df = pd.read_csv(DB_CODES)
@@ -126,7 +124,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# تفعيل السلايد بار عند الضرورة لجدول فئات الاشتراكات والمحاولات المعتمد لديك
+# تفعيل السلايد بار لجدول فئات الاشتراكات والمحاولات المعتمد لديك
 with st.sidebar:
     st.markdown("### 🏦 معلومات الحساب والدعم")
     st.markdown("""
@@ -187,7 +185,6 @@ if "auth" not in st.session_state:
             st.session_state.update({"auth": True, "is_admin": True, "credit": 9999, "code": "HAYDER_2026"})
             st.rerun()
         else:
-            # الفحص داخل قاعدة البيانات للكودات المصدرة
             try:
                 df = pd.read_csv(DB_CODES)
                 idx_list = df.index[df['code'] == input_cleaned].tolist()
@@ -207,9 +204,6 @@ if "auth" not in st.session_state:
     st.stop()
 
 # --- [2. محتوى المنصة - يظهر فقط بعد الدخول] ---
-
-# رسالة الترحيب الموحدة دكتور Courage
-st.markdown(f'<div class="main-header"><h1>مرحباً دكتور Courage</h1><h2>الرصيد المتاح: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
 
 # لوحة الإدارة للمدير (HAYDER_2026)
 if st.session_state.get('is_admin', False):
@@ -264,7 +258,7 @@ if st.session_state.get('is_admin', False):
         st.dataframe(pd.read_csv(DB_CODES), use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- مكان الرفع الاستراتيجي (مستقل وخارج التبويبات تماماً لمنع الخطأ الأحمر) ---
+# --- أداة الرفع الاستراتيجية المستقلة تماماً والمحمية ---
 st.markdown("### 📂 مستودع رفع المستندات الموحد")
 up = st.file_uploader("ارفع ملف البحث العلمي بصيغة (PDF فقط حالياً) لتفعيل التبويبات المتقدمة بالأسفل:", type=["pdf"])
 
@@ -310,155 +304,156 @@ with tabs[0]:
         st.download_button(
             label="📥 تحميل المخرجات كملف Word مجهز للتعديل",
             data=create_word_file(st.session_state.last_plan),
-            file_name=f"ScholarNode_Output_{datetime.now().strftime('%Y%m%d')}.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            file_name=f"ScholarNode_Output.docx"
         )
 
-# كتلة المعالجة المرتبطة برفع الملف (تتفعل تلقائياً عند سحب وإفلات الملف بالأعلى)
+# كتلة المعالجة الحصرية للملف المرفوع
 if up:
-    up.seek(0)
-    doc_v = fitz.open(stream=up.read(), filetype="pdf")
-    p_count = len(doc_v)
-    
-    # 2. تبويب الترجمة الأكاديمية الاحترافية
-    with tabs[1]:
-        st.subheader("🌍 مترجم ScholarNode الشامل (صياغة ومصطلحات أكاديمية)")
-        t_lang = st.selectbox("اختر اللغة المستهدفة للترجمة:", ["العربية", "English"], key="t_lang_new")
+    try:
+        up.seek(0)
+        file_bytes = up.read()
+        doc_v = fitz.open(stream=file_bytes, filetype="pdf")
+        p_count = len(doc_v)
         
-        if st.button(f"🚀 بدء ترجمة {p_count} صفحة بالكامل"):
-            if st.session_state.get('credit', 0) >= p_count or st.session_state.code == "HAYDER_2026":
+        # 2. تبويب الترجمة الأكاديمية الاحترافية
+        with tabs[1]:
+            st.subheader("🌍 مترجم ScholarNode الشامل (صياغة ومصطلحات أكاديمية)")
+            t_lang = st.selectbox("اختر اللغة المستهدفة للترجمة:", ["العربية", "English"], key="t_lang_new")
+            
+            if st.button(f"🚀 بدء ترجمة {p_count} صفحة بالكامل"):
+                if st.session_state.get('credit', 0) >= p_count or st.session_state.get('code') == "HAYDER_2026":
+                    simulate_processing()
+                    if deduct_attempt(p_count):
+                        full_translation = ""
+                        prog_bar = st.progress(0)
+                        for i in range(p_count):
+                            page_text = doc_v[i].get_text()
+                            if page_text.strip():
+                                res = client.chat.completions.create(
+                                    model="gpt-4o-mini",
+                                    messages=[{"role": "system", "content": f"Translate this scientific text professionally to {t_lang}, preserving all academic terms accurately."}, 
+                                              {"role": "user", "content": page_text}]
+                                )
+                                full_translation += f"\n--- صفحة {i+1} ---\n" + res.choices[0].message.content + "\n"
+                            prog_bar.progress((i + 1) / p_count)
+                        st.session_state.translation_result = full_translation
+                        st.success("✅ اكتملت عملية الترجمة الأكاديمية بنجاح!")
+                        st.rerun()
+                else:
+                    st.error(f"عذراً، رصيدك الحالي لا يكفي لترجمة {p_count} صفحة بالكامل.")
+            
+            if "translation_result" in st.session_state:
+                st.download_button(
+                    label="📥 تحميل الكتاب أو المستند المترجم (Word)",
+                    data=create_word_file(st.session_state.translation_result),
+                    file_name="ScholarNode_Translated_Doc.docx"
+                )
+
+        # 3. تبويب الترجمة القانونية للمستندات
+        with tabs[2]:
+            st.subheader("⚖️ صياغة وترجمة المستندات ترجمة قانونية رسمية")
+            legal_entity = st.text_input("اذكر الجهة الرسمية الموجه لها المستند (مثال: محكمة، جامعة، وزارة):", key="entity_t4")
+            
+            if st.button("🚀 بدء الصياغة القانونية المعتمدة (تكلفة ثابتة: 5 محاولات)"):
+                if st.session_state.get('credit', 0) >= 5 or st.session_state.get('code') == "HAYDER_2026":
+                    simulate_processing()
+                    if deduct_attempt(5):
+                        chunk = "\n".join([doc_v[j].get_text() for j in range(min(5, p_count))])
+                        res = client.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=[{"role": "system", "content": f"أنت مترجم قانوني محلف ومجاز. صغ وترجم النص التالي بلغة قانونية رسمية صارمة ومطابقة للمعايير لتناسب التقديم إلى: {legal_entity}."},
+                                      {"role": "user", "content": chunk}]
+                        )
+                        st.session_state.legal_result = res.choices[0].message.content
+                        st.success("✅ تم الانتهاء من صياغة الوثيقة القانونية!")
+                        st.rerun()
+                else:
+                    st.error("❌ رصيدك الحالي منخفض لإجراء الصياغة القانونية.")
+
+            if "legal_result" in st.session_state:
+                st.markdown(st.session_state.legal_result)
+                st.download_button("📥 تحميل المستند القانوني (Word)", data=create_word_file(st.session_state.legal_result), file_name="Legal_Translation.docx")
+
+        # 4. تبويب المراجعة العلمية والنقد
+        with tabs[3]:
+            st.subheader("🎓 مراجعة نقدية أكاديمية ومنهجية شاملة للبحث")
+            review_lang = st.selectbox("اختر لغة تقرير النقد الأكاديمي:", ["العربية", "English"], key="rev_lang")
+            
+            if st.button("توليد تقرير النقد المنهجي"):
                 simulate_processing()
-                if deduct_attempt(p_count):
-                    full_translation = ""
-                    prog_bar = st.progress(0)
-                    for i in range(p_count):
-                        page_text = doc_v[i].get_text()
-                        if page_text.strip():
-                            res = client.chat.completions.create(
-                                model="gpt-4o-mini",
-                                messages=[{"role": "system", "content": f"Translate this scientific text professionally to {t_lang}, preserving all academic terms accurately."}, 
-                                          {"role": "user", "content": page_text}]
-                            )
-                            full_translation += f"\n--- صفحة {i+1} ---\n" + res.choices[0].message.content + "\n"
-                        prog_bar.progress((i + 1) / p_count)
-                    st.session_state.translation_result = full_translation
-                    st.success("✅ اكتملت عملية الترجمة الأكاديمية بنجاح!")
+                if deduct_attempt(max(1, int(p_count/2))):
+                    full_review = ""
+                    for i in range(0, p_count, 10):
+                        chunk = "\n".join([doc_v[j].get_text() for j in range(i, min(i+10, p_count))])
+                        res = client.chat.completions.create(
+                            model="gpt-4o-mini", 
+                            messages=[{"role": "system", "content": f"Provide a strict academic review and structural critique in {review_lang} highlighting methodology flaws and enhancement points."},
+                                      {"role": "user", "content": chunk}]
+                        )
+                        full_review += res.choices[0].message.content + "\n"
+                    st.session_state.review_result = full_review
+                    st.success("✅ تم إنتاج تقرير التحكيم العلمي المنهجي!")
                     st.rerun()
-            else:
-                st.error(f"عذراً، رصيدك الحالي لا يكفي لترجمة {p_count} صفحة بالكامل.")
-        
-        if "translation_result" in st.session_state:
-            st.download_button(
-                label="📥 تحميل الكتاب أو المستند المترجم (Word)",
-                data=create_word_file(st.session_state.translation_result),
-                file_name="ScholarNode_Translated_Doc.docx"
-            )
+            
+            if "review_result" in st.session_state:
+                st.markdown(st.session_state.review_result)
+                st.download_button("📥 تحميل تقرير المراجعة والنقد (Word)", data=create_word_file(st.session_state.review_result), file_name="Academic_Critique_Report.docx")
 
-    # 3. تبويب الترجمة القانونية للمستندات
-    with tabs[2]:
-        st.subheader("⚖️ صياغة وترجمة المستندات ترجمة قانونية رسمية")
-        legal_entity = st.text_input("اذكر الجهة الرسمية الموجه لها المستند (مثال: محكمة، جامعة، وزارة):", key="entity_t4")
-        
-        if st.button("🚀 بدء الصياغة القانونية المعتمدة (تكلفة ثابتة: 5 محاولات)"):
-            if st.session_state.get('credit', 0) >= 5 or st.session_state.code == "HAYDER_2026":
-                simulate_processing()
-                if deduct_attempt(5):
-                    # دمج نصوص الصفحات الأولى للترجمة القانونية المقننة
-                    chunk = "\n".join([doc_v[j].get_text() for j in range(min(5, p_count))])
-                    res = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[{"role": "system", "content": f"أنت مترجم قانوني محلف ومجاز. صغ وترجم النص التالي بلغة قانونية رسمية صارمة ومطابقة للمعايير لتناسب التقديم إلى: {legal_entity}."},
-                                  {"role": "user", "content": chunk}]
-                    )
-                    st.session_state.legal_result = res.choices[0].message.content
-                    st.success("✅ تم الانتهاء من صياغة الوثيقة القانونية!")
-                    st.rerun()
-            else:
-                st.error("❌ رصيدك الحالي منخفض لإجراء الصياغة القانونية.")
-
-        if "legal_result" in st.session_state:
-            st.markdown(st.session_state.legal_result)
-            st.download_button("📥 تحميل المستند القانوني (Word)", data=create_word_file(st.session_state.legal_result), file_name="Legal_Translation.docx")
-
-    # 4. تبويب المراجعة العلمية والنقد
-    with tabs[3]:
-        st.subheader("🎓 مراجعة نقدية أكاديمية ومنهجية شاملة للبحث")
-        review_lang = st.selectbox("اختر لغة تقرير النقد الأكاديمي:", ["العربية", "English"], key="rev_lang")
-        
-        if st.button("توليد تقرير النقد المنهجي"):
-            simulate_processing()
-            if deduct_attempt(max(1, int(p_count/2))):
-                full_review = ""
-                for i in range(0, p_count, 10):
-                    chunk = "\n".join([doc_v[j].get_text() for j in range(i, min(i+10, p_count))])
-                    res = client.chat.completions.create(
-                        model="gpt-4o-mini", 
-                        messages=[{"role": "system", "content": f"Provide a strict academic review and structural critique in {review_lang} highlighting methodology flaws and enhancement points."},
-                                  {"role": "user", "content": chunk}]
-                    )
-                    full_review += res.choices[0].message.content + "\n"
-                st.session_state.review_result = full_review
-                st.success("✅ تم إنتاج تقرير التحكيم العلمي المنهجي!")
-                st.rerun()
-        
-        if "review_result" in st.session_state:
-            st.markdown(st.session_state.review_result)
-            st.download_button("📥 تحميل تقرير المراجعة والنقد (Word)", data=create_word_file(st.session_state.review_result), file_name="Academic_Critique_Report.docx")
-
-    # 7. تبويب معاينة ومناقشة الملف من الكود المستقر الناجح
-    with tabs[6]:
-        st.subheader("📄 معاينة ومناقشة صفحات المستند المرفوع")
-        p_num = st.number_input("عرض وعزل الصفحة رقم:", 1, p_count, 1)
-        st.markdown("---")
-        user_query = st.text_input("💬 اسأل الذكاء الاصطناعي عن محتوى هذه الصفحة تحديداً:")
-        
-        if st.button("إرسال السؤال ومناقشة النص"):
-            if user_query:
-                simulate_processing()
-                if deduct_attempt(1):
-                    page_content = doc_v[p_num-1].get_text()
-                    res = client.chat.completions.create(
-                        model="gpt-4o", 
-                        messages=[
-                            {"role": "system", "content": "أنت مساعد أكاديمي خبير ومحكم أبحاث. أجب بناءً على النص المستخلص من الصفحة المرفقة بدقة بالغة وبنفس لغة السؤال."},
-                            {"role": "user", "content": f"النص المستخرج من الصفحة:\n{page_content}\n\nسؤال الباحث المستفسر:\n{user_query}"}
-                        ]
-                    )
-                    st.info(f"**إجابة المستشار الأكاديمي الفورية:**\n\n{res.choices[0].message.content}")
-        
-        st.markdown("---")
-        # استخراج المعاينة الصورية الحية لصفحة الـ PDF بكفاءة عالية لمنع الأخطاء
-        pix = doc_v[p_num-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
-        st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
+        # 7. تبويب معاينة ومناقشة الملف
+        with tabs[6]:
+            st.subheader("📄 معاينة ومناقشة صفحات المستند المرفوع")
+            p_num = st.number_input("عرض وعزل الصفحة رقم:", 1, p_count, 1)
+            st.markdown("---")
+            user_query = st.text_input("💬 اسأل الذكاء الاصطناعي عن محتوى هذه الصفحة تحديداً:")
+            
+            if st.button("إرسال السؤال ومناقشة النص"):
+                if user_query:
+                    simulate_processing()
+                    if deduct_attempt(1):
+                        page_content = doc_v[p_num-1].get_text()
+                        res = client.chat.completions.create(
+                            model="gpt-4o", 
+                            messages=[
+                                {"role": "system", "content": "أنت مساعد أكاديمي خبير ومحكم أبحاث. أجب بناءً على النص المستخلص من الصفحة المرفقة بدقة بالغة وبنفس لغة السؤال."},
+                                {"role": "user", "content": f"النص المستخرج من الصفحة:\n{page_content}\n\nسؤال الباحث المستفسر:\n{user_query}"}
+                            ]
+                        )
+                        st.info(f"**إجابة المستشار الأكاديمي الفورية:**\n\n{res.choices[0].message.content}")
+            
+            st.markdown("---")
+            pix = doc_v[p_num-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
+            st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
+            
+    except Exception as e:
+        st.error(f"⚠️ حدث خطأ أثناء معالجة الملف: {e}. يرجى التحقق من سلامة ملف الـ PDF.")
 
 else:
-    # الرسائل التنبيهية الذكية والآمنة من كودك المستقر لمنع ظهور أي أخطاء متصفح قبل الرفع
     with tabs[1]: st.info("📂 يرجى سحب وإفلات أو رفع ملف PDF من الأعلى لتفعيل خدمة الترجمة الأكاديمية الشاملة.")
     with tabs[2]: st.info("📂 يرجى سحب وإفلات أو رفع ملف PDF من الأعلى لتفعيل خدمة الصياغة والترجمة القانونية.")
     with tabs[3]: st.info("📂 يرجى سحب وإفلات أو رفع ملف PDF من الأعلى لتفعيل خدمة التحكيم والنقد العلمي الشامل.")
     with tabs[6]: st.info("📂 يرجى سحب وإفلات أو رفع ملف PDF من الأعلى لمعاينة ومناقشة الصفحات صورياً ونصياً.")
 
-# 5. تبويب توليد الصور والمخططات (مستقل ولا يحتاج لملف)
+# 5. تبويب توليد الصور والمخططات (مستقل)
 with tabs[4]:
     st.subheader("🎨 توليد الصور والمخططات التوضيحية للأبحاث")
     image_prompt = st.text_area("أدخل الوصف الأكاديمي التفصيلي الدقيق للمخطط أو الشكل المطلوب بيانه:", key="img_prompt_t5")
     if st.button("بدء توليد الشكل التوضيحي (التكلفة: 5 محاولات)"):
         if not image_prompt.strip():
             st.warning("⚠️ يرجى كتابة وصف المخطط أولاً.")
-        elif st.session_state.get('credit', 0) < 5 and st.session_state.code != "HAYDER_2026":
+        elif st.session_state.get('credit', 0) < 5 and st.session_state.get('code') != "HAYDER_2026":
             st.error("❌ الرصيد المتاح غير كافٍ لتوليد الصور.")
         else:
             simulate_processing()
             try:
                 response = client.images.generate(model="dall-e-3", prompt=image_prompt, n=1, size="1024x1024")
                 if deduct_attempt(5):
-                    st.success("🎉 تم بناء المخطط البياني بنجاح الفني!")
+                    st.success("🎉 تم بناء المخطط البياني بنجاح!")
                     st.image(response.data[0].url, caption="المخطط المولد بواسطة المنصة")
                     st.rerun()
             except Exception as e:
                 st.error(f"❌ حدث عائق أثناء توليد الصورة: {e}")
 
-# 6. تبويب توليد الصوت الاحترافي (مستقل ولا يحتاج لملف)
+# 6. تبويب توليد الصوت الاحترافي (مستقل)
 with tabs[5]:
     st.subheader("🎙️ تحويل النصوص الأكاديمية إلى ملفات صوتية طبيعية (TTS)")
     audio_text = st.text_area("اكتب أو الصق النص المراد قراءته وتحويله إلى محتوى مسموع وبشري:", key="audio_text_t8")
@@ -466,8 +461,8 @@ with tabs[5]:
     
     if st.button("تحويل المحتوى وتوليد الصوت (التكلفة: 5 محاولات)"):
         if not audio_text.strip():
-            st.warning("⚠️ يرجى إدخال النص أولاً.")
-        elif st.session_state.get('credit', 0) < 5 and st.session_state.code != "HAYDER_2026":
+            st.warning("⚠️ يرجى إدخل النص أولاً.")
+        elif st.session_state.get('credit', 0) < 5 and st.session_state.get('code') != "HAYDER_2026":
             st.error("❌ رصيدك غير كافٍ لإنجاز توليد الصوت.")
         else:
             simulate_processing()
@@ -482,5 +477,4 @@ with tabs[5]:
             except Exception as e:
                 st.error(f"❌ خطأ في معالجة نظام الصوتيات: {e}")
 
-# التذييل السفلي الثابت والأنيق للمنصة
 st.markdown("<br><hr><p style='text-align:center;'>ScholarNode Academy 2026</p>", unsafe_allow_html=True)
