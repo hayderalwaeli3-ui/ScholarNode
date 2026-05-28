@@ -21,7 +21,7 @@ try:
 except Exception:
     client = None
 
-# --- إعداد وإصلاح قاعدة البيانات المحلية ---
+# --- إعداد قاعدة البيانات المحلية ---
 DB_CODES = "scholarnode_database.csv"
 
 def init_db():
@@ -79,7 +79,7 @@ def convert_to_word_provider(text, rtl=False):
     bio.seek(0)
     return bio
 
-# --- حماية مظهر الواجهة في الوضعين المظلم والمضيء ---
+# --- حماية مظهر الواجهة والتنسيقات ---
 st.markdown("""
 <style>
     .welcome-header {
@@ -112,7 +112,7 @@ if "authenticated" in st.session_state and st.session_state.user_code != "HAYDER
         pass
 
 # ==========================================
-#     بوابة الدخول الآمن للمنصة
+#     بوابة الدخول الآمن (تمنع الوميض والأدوات)
 # ==========================================
 if "authenticated" not in st.session_state:
     st.markdown('<div class="welcome-header"><h1 style="color:#ffffff !important; margin:0;">ScholarNode</h1></div>', unsafe_allow_html=True)
@@ -166,10 +166,10 @@ if "authenticated" not in st.session_state:
         st.table(table_data)
 
     st.markdown("<br><br><br><p style='text-align:center;'>ScholarNode Academy © 2026</p>", unsafe_allow_html=True)
-    st.stop()
+    st.stop() # إيقاف مطلق لحماية المنصة ومنع ظهور أي أدوات للمتطفلين
 
 # ==========================================
-#     لوحة التحكم والشريط الجانبي
+#     لوحة التحكم والشريط الجانبي للمشتركين والمدير
 # ==========================================
 with st.sidebar:
     st.markdown(f"### 👋 أهلاً دكتور Courage")
@@ -179,63 +179,18 @@ with st.sidebar:
         st.success(f"📅 صلاحية الاشتراك إلى:\n{st.session_state.expiry_info}")
     
     st.markdown("---")
-    st.markdown("### 📊 جدول الصلاحيات")
-    sidebar_table = [{"الفئة": f"{k:,}", "المحاولات": v['attempts']} for k, v in PLANS.items()]
-    st.table(sidebar_table)
-    
     if st.button("🚪 تسجيل الخروج من المنصة", use_container_width=True):
         st.session_state.clear()
         st.rerun()
 
 # ==========================================
-#          توزيع سياق العرض (إدارة / مشترك)
+#         دالة الواجهة الرئيسية للخدمات
 # ==========================================
-if st.session_state.is_admin:
-    st.markdown("## 🛠️ لوحة تحكم الإدارة العليا")
-    admin_tabs = st.tabs(["🖥️ واجهة المعالجة الفورية", "🔑 توليد الكودات", "📋 السجل العام"])
-    
-    with admin_tabs[1]:
-        st.subheader("توليد كود تفعيل جديد")
-        selected_plan = st.selectbox("اختر الفئة النقدية:", list(PLANS.keys()), format_func=lambda x: f"{x:,} دينار")
-        if st.button("🔄 توليد كود عشوائي معتمد"):
-            rand_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=7))
-            st.session_state.latest_generated = f"SN-{selected_plan//1000}K-{rand_id}"
-        if "latest_generated" in st.session_state:
-            st.code(st.session_state.latest_generated, language="text")
-            if st.button("✅ حفظ وتفعيل الكود في السيرفر"):
-                df_admin = pd.read_csv(DB_CODES)
-                new_row = {
-                    "code": st.session_state.latest_generated,
-                    "credit": PLANS[selected_plan]["attempts"],
-                    "remaining": PLANS[selected_plan]["attempts"],
-                    "plan_type": f"{selected_plan:,} IQD",
-                    "activation_date": datetime.now().strftime('%Y-%m-%d'),
-                    "expiry_date": (datetime.now() + timedelta(days=PLANS[selected_plan]["days"])).strftime('%Y-%m-%d'),
-                    "status": "Active"
-                }
-                pd.concat([df_admin, pd.DataFrame([new_row])], ignore_index=True).to_csv(DB_CODES, index=False)
-                st.success("✔️ تم الحفظ بنجاح وجاهز للتسليم.")
-                del st.session_state.latest_generated
-                st.rerun()
-                
-    with admin_tabs[2]:
-        try:
-            st.dataframe(pd.read_csv(DB_CODES), use_container_width=True)
-        except Exception:
-            st.write("لا توجد كودات مفعلة.")
-            
-    display_area = admin_tabs[0]
-else:
-    display_area = st
-
-# ==========================================
-#         واجهة الخدمات الأكاديمية المتطورة
-# ==========================================
-with display_area:
+def render_user_services():
     st.markdown("## ✨ الخدمات الأكاديمية المتطورة")
     st.write(f"مرحباً بك، رصيدك الحالي المتاح للاستخدام هو: **{st.session_state.user_credit}** محاولة.")
     
-    # 🌟 الحل العبقري: شريط رفع واحد علوي يغذي كل التبويبات ويمنع التجميد والتعليق نهائياً
+    # شريط رفع واحد موحد فائق السعة لمنع التعليق والتجميد
     uploaded_file = st.file_uploader("📂 Upload: ارفع مستند البحث أو الملف هنا لمرة واحدة فقط لتفعيل كافة الأقسام (PDF, Word, صور):", type=["pdf", "docx", "png", "jpg", "jpeg"])
     
     sub_tabs = st.tabs([
@@ -361,7 +316,7 @@ with display_area:
     # --- 5. تبويب توليد الصور والمخططات ---
     with sub_tabs[4]:
         st.subheader("🎨 توليد الرسوم والمخططات والشعارات الأكاديمية")
-        image_desc = st.text_area("أدخل تفاصيل ومحتوى الصورة أو المخطط المطلوب كتابته بالعربية:")
+        image_desc = st.text_area("أدخل تفاصيل ومحتوى الصورة أو المخطط المطلوب كتابته بالعارية:")
         st.caption("🎯 التكلفة الثابتة: يتم خصم 5 محاولات للطلب الواحد.")
         
         if st.button("🎨 ابدأ توليد الرسم الفني"):
@@ -391,7 +346,7 @@ with display_area:
     # --- 7. تبويب توليد الصوت ---
     with sub_tabs[6]:
         st.subheader("🎙️ قراءة النصوص وتحويل البحوث إلى ملفات صوتية طبيعية")
-        speech_text = st.text_area("ضع النص المراد قراءته صوتياً بشرط ألا يتجاوز حد العبارة:")
+        speech_text = st.text_area("ضع النص المراد قراءته صوتياً:")
         if speech_text.strip():
             words_count = len(speech_text.split())
             calculated_audio_cost = (words_count // 41) + 1
@@ -424,5 +379,48 @@ with display_area:
         if "advisor_res" in st.session_state:
             st.info("💡 **توصية المستشار الأكاديمي للمنصة:**")
             st.markdown(st.session_state.advisor_res)
+
+# ==========================================
+#          توجيه العرض حسب الصلاحية
+# ==========================================
+if st.session_state.is_admin:
+    st.markdown("## 🛠️ لوحة تحكم الإدارة العليا")
+    admin_tabs = st.tabs(["🖥️ واجهة المعالجة الفورية", "🔑 توليد الكودات", "📋 السجل العام"])
+    
+    with admin_tabs[0]:
+        render_user_services() # عرض الخدمات للمدير داخل التبويب الأول
+        
+    with admin_tabs[1]:
+        st.subheader("توليد كود تفعيل جديد")
+        selected_plan = st.selectbox("اختر الفئة النقدية:", list(PLANS.keys()), format_func=lambda x: f"{x:,} دينار")
+        if st.button("🔄 توليد كود عشوائي معتمد"):
+            rand_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=7))
+            st.session_state.latest_generated = f"SN-{selected_plan//1000}K-{rand_id}"
+        if "latest_generated" in st.session_state:
+            st.code(st.session_state.latest_generated, language="text")
+            if st.button("✅ حفظ وتفعيل الكود في السيرفر"):
+                df_admin = pd.read_csv(DB_CODES)
+                new_row = {
+                    "code": st.session_state.latest_generated,
+                    "credit": PLANS[selected_plan]["attempts"],
+                    "remaining": PLANS[selected_plan]["attempts"],
+                    "plan_type": f"{selected_plan:,} IQD",
+                    "activation_date": datetime.now().strftime('%Y-%m-%d'),
+                    "expiry_date": (datetime.now() + timedelta(days=PLANS[selected_plan]["days"])).strftime('%Y-%m-%d'),
+                    "status": "Active"
+                }
+                pd.concat([df_admin, pd.DataFrame([new_row])], ignore_index=True).to_csv(DB_CODES, index=False)
+                st.success("✔️ تم الحفظ بنجاح وجاهز للتسليم.")
+                del st.session_state.latest_generated
+                st.rerun()
+                
+    with admin_tabs[2]:
+        try:
+            st.dataframe(pd.read_csv(DB_CODES), use_container_width=True)
+        except Exception:
+            st.write("لا توجد كودات مفعلة.")
+else:
+    # للمشترك العادي: يتم تشغيل الدالة مباشرة دون استخدام "with" المسبب للانهيار
+    render_user_services()
 
 st.markdown("<br><br><hr><p style='text-align:center;'>ScholarNode Academy © 2026</p>", unsafe_allow_html=True)
