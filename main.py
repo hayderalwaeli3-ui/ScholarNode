@@ -14,7 +14,7 @@ try:
 except ImportError:
     fitz = None
 
-# محاولة استيراد محرك قوقل الاحتياطي لضمان عدم توقف المنصة عند خطأ 401
+# محاولة استيراد محرك قوقل الاحتياطي
 try:
     import google.generativeai as genai
 except ImportError:
@@ -27,7 +27,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# تعاريف واجهات الـ CSS المخصصة للتنضيد الرصين
 st.markdown("""
     <style>
     .welcome-header { background-color: #1e3d59 !important; border: 2px solid #ffc13b !important; padding: 20px; border-radius: 12px; margin-bottom: 25px; text-align: center; }
@@ -45,7 +44,7 @@ def init_db():
 
 init_db()
 
-# --- 3. جدول الباقات والأسعار (تعريف عمومي علوي حاسم لحل خطأ NameError) ---
+# --- 3. جدول الباقات والأسعار ---
 PLANS = {
     "1000": {"attempts": 10, "days": 4},
     "5000": {"attempts": 60, "days": 20},
@@ -72,12 +71,12 @@ gemini_key = st.secrets.get("GEMINI_API_KEY", "").strip()
 if gemini_key and genai:
     genai.configure(api_key=gemini_key)
 
-# دالة التوليد الفكري الذكية والمقاومة للأخطاء بنسبة 100% عبر الفحص المتعدد للموديلات
+# دالة التوليد الفكري الذكية والمقاومة للأخطاء بنسبة 100% عبر الفحص المتعدد للموديلات الحديثة
 def generate_academic_text(prompt):
     openai_error = ""
     
-    # المسار الأول: OpenAI
-    if client:
+    # المسار الأول الرئيسي: OpenAI
+    if client and openai_key:
         try:
             res = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -87,11 +86,11 @@ def generate_academic_text(prompt):
         except Exception as e:
             openai_error = str(e)
     else:
-        openai_error = "مفتاح OpenAI غير مهيأ أو لم يتم العثور عليه."
+        openai_error = "مفتاح OpenAI غير مهيأ أو فارغ في الإعدادات السرية السحابية."
     
-    # المسار الثاني الاحتياطي: Gemini (سلسلة فحص مرنة لمنع خطأ 404 نهائياً)
+    # المسار الثاني الاحتياطي الفوري: Gemini (باستخدام الموديلات الحديثة لعام 2026 حتماً)
     if gemini_key and genai:
-        backup_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro", "gemini-1.0-pro"]
+        backup_models = ["gemini-1.5-flash", "gemini-1.5-pro"]
         last_gemini_error = ""
         
         for model_name in backup_models:
@@ -101,7 +100,7 @@ def generate_academic_text(prompt):
                 return res.text + f"\n\n*(تنبيه أمان السيرفر: تم التحويل تلقائياً للمحرك الاحتياطي المستقر بنجاح عبر موديل [{model_name}])*"
             except Exception as gem_err:
                 last_gemini_error = str(gem_err)
-                continue  # الانتقال للموديل التالي في حال فشل الحالي
+                continue  
         
         return f"🚨 عذراً يا دكتور، واجهنا مشكلة في كلا المحركين بالسيرفر:\n- خطأ المحرك الرئيسي (OpenAI): {openai_error}\n- خطأ المحرك البديل (Gemini): {last_gemini_error}"
             
@@ -112,7 +111,7 @@ def extract_file_content(uploaded_file):
     if uploaded_file is None:
         return "", 0
     
-    uploaded_file.seek(0)  # تصفير المؤشر حتماً قبل بدء القراءة
+    uploaded_file.seek(0)
     file_name = uploaded_file.name
     text = ""
     pages = 1
@@ -135,7 +134,7 @@ def extract_file_content(uploaded_file):
     except Exception as e:
         text = f"خطأ معالجة داخلي: {e}"
     
-    uploaded_file.seek(0)  # إعادة تصفير المؤشر لضمان جهوزية الملف للتبويبات الأخرى
+    uploaded_file.seek(0)
     return text, pages
 
 # --- 6. نظام خصم الرصيد والمحاولات ---
@@ -232,7 +231,7 @@ else:
         st.markdown("📊 **جدول الباقات**")
         st.dataframe(pd.DataFrame(table_data), use_container_width=True, hide_index=True)
 
-    # دالة بناء الخدمات الرئيسية للمستخدمين والأدمن
+    # دالة بناء الخدمات الرئيسية للمستخدمين
     def render_user_services():
         st.markdown("### ✨ الخدمات الأكاديمية المتطورة")
         uploaded_file = st.file_uploader("📂 ارفع مستندك هنا (PDF، Word، أو صور للتحليل والمعاينة الحية)", type=["pdf", "docx", "png", "jpg", "jpeg"])
@@ -243,22 +242,18 @@ else:
             "🎨 صناعة الصور والمخططات", "✨ توضيح وتحسين الصور", "👨‍🏫 المستشار الذكي المفتوح"
         ])
         
-        # التبويب الأول: معاينة ومناقشة المستند
         with sub_tabs[0]:
             st.subheader("🔍 معاينة ومناقشة المستند")
             if uploaded_file:
                 col_preview, col_chat = st.columns([1, 1])
-                
                 with col_preview:
                     st.markdown("### 🖼️ المعاينة الحية للمستند")
                     uploaded_file.seek(0)
-                    
                     if uploaded_file.name.lower().endswith('.pdf') and fitz:
                         try:
                             file_bytes = uploaded_file.read()
                             doc = fitz.open(stream=file_bytes, filetype="pdf")
                             total_pages = len(doc)
-                            
                             if "pdf_page_index" not in st.session_state:
                                 st.session_state.pdf_page_index = 0
                             if st.session_state.pdf_page_index >= total_pages:
@@ -267,7 +262,6 @@ else:
                             page = doc[st.session_state.pdf_page_index]
                             pix = page.get_pixmap(dpi=110)
                             img_data = pix.tobytes("png")
-                            
                             st.image(img_data, caption=f"الورقة رقم {st.session_state.pdf_page_index + 1} من إجمالي {total_pages}", use_container_width=True)
                             
                             col_b1, col_b2 = st.columns(2)
@@ -289,7 +283,6 @@ else:
                 with col_chat:
                     target_lang_1 = st.selectbox("اللغة المستهدفة للنقاش والتحليل:", ["العربية", "English"], key="tl1")
                     chat_query = st.text_input("💬 اكتب سؤالك أو الاستفسار التفصيلي حول الملف المرفوع هنا:")
-                    
                     if st.button("🚀 تنفيذ التحليل ومناقشة الملف"):
                         if chat_query.strip() and deduct_attempts(1):
                             run_progress_bar()
@@ -298,13 +291,11 @@ else:
                             result = generate_academic_text(prompt)
                             st.session_state.chat_res = result
                             st.write(result)
-                            
                             if "chat_res" in st.session_state:
                                 st.download_button("📥 تحميل النتيجة بصيغة Word مصفف", data=convert_word_provider(st.session_state.chat_res, rtl=True), file_name="Discussion_Result.docx")
             else:
                 st.warning("⚠️ يرجى رفع ملف من شريط التحميل العلوي أولاً لتظهر لك شاشة المعاينة الحية والمناقشة.")
 
-        # بقية الخدمات الأكاديمية المرتبطة كلياً بنظام التوليد المزدوج الآمن
         with sub_tabs[1]:
             st.subheader("🎓 المراجعة الأكاديمية والنقدية الرصينة")
             if uploaded_file:
@@ -353,7 +344,7 @@ else:
             img_desc = st.text_area("أدخل التفاصيل الدقيقة ووصف الصورة أو المخطط المطلوب صناعته بالعربية أو الإنجليزية:")
             if st.button("🎨 تنفيذ توليد الرسم الفني الآن"):
                 if img_desc.strip():
-                    if client:
+                    if client and openai_key:
                         if deduct_attempts(5):
                             run_progress_bar()
                             try:
@@ -368,12 +359,9 @@ else:
                                 raw_bytes = requests.get(img_url).content
                                 st.download_button("📥 تنزيل الصورة بصيغة PNG", data=raw_bytes, file_name="scholar_node_image.png", mime="image/png")
                             except Exception as e:
-                                if "401" in str(e):
-                                    st.error("🚨 عذراً يا دكتور، توليد الصور والمخططات يعتمد على مفتاح OpenAI وحسابك الحالي غير مشحون رصيد كافٍ في موقع OpenAI حالياً.")
-                                else:
-                                    st.error(f"خطأ في الاتصال بمحرك الرسوم: {e}")
+                                st.error(f"خطأ في الاتصال بمحرك الرسوم من OpenAI: {e}")
                     else:
-                        st.error("⚠️ محرك توليد الصور المباشر غير مهيأ بمفتاح فعال حالياً في السيرفر.")
+                        st.error("⚠️ محرك توليد الصور المباشر يعتمد حصراً على مفتاح OpenAI وهو غير مفعّل أو يحتوي على خطأ مصادقة حالياً.")
 
         with sub_tabs[5]:
             st.subheader("✨ توضيح وتكبير دقة معالم الصور المعتمة")
@@ -397,7 +385,12 @@ else:
     # توجيه الواجهات حسب صلاحيات الحساب
     if st.session_state.is_admin:
         st.title("👨‍💼 لوحة تحكم الإدارة العليا")
-        admin_tab1, admin_tab2, admin_tab3 = st.tabs(["🖥️ واجهة الخدمات الأكاديمية للمشتركين", "🔑 توليد الكودات الجديدة", "📊 جدول الكودات المفعّلة بالنظام"])
+        admin_tab1, admin_tab2, admin_tab3, admin_tab4 = st.tabs([
+            "🖥️ واجهة الخدمات الأكاديمية للمشتركين", 
+            "🔑 توليد الكودات الجديدة", 
+            "📊 جدول الكودات المفعّلة بالنظام",
+            "🔧 فحص سلامة المفاتيح السحابية (API Diagnostics)"
+        ])
         
         with admin_tab1:
             render_user_services()
@@ -408,7 +401,6 @@ else:
             if st.button("⚙️ توليد الكود العشوائي وحفظه بالسيرفر"):
                 rand_id = "".join(random.choices(string.ascii_uppercase + string.digits, k=7))
                 generated_code = f"SN-{int(selected_plan)//1000}K-{rand_id}"
-                
                 df_admin = pd.read_csv(DB_CODES)
                 new_row = {
                     "code": generated_code,
@@ -428,6 +420,38 @@ else:
                 st.dataframe(pd.read_csv(DB_CODES), use_container_width=True)
             except:
                 st.write("لا توجد كودات مفعلة.")
+                
+        with admin_tab4:
+            st.subheader("🛠️ أداة فحص الاتصال الفوري بالمحركات العالمية")
+            st.write("اضغط على الزر أدناه لإرسال نبضة فحص صامتة للسيرفرات للتأكد من تفعيل رصيدك المالي ومفاتيحك الحالية:")
+            
+            if st.button("🔍 ابدأ الفحص الشامل للمفاتيح الآن"):
+                # فحص OpenAI
+                st.markdown("### 1. محرك OpenAI الرئيسي:")
+                if client and openai_key:
+                    try:
+                        test_res = client.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=[{"role": "user", "content": "say ok"}],
+                            max_tokens=5
+                        )
+                        st.success("🟢 الاتصال ناجح تماماً! حساب OpenAI الخاص بك مشحون ومفعّل بنجاح بنسبة 100%.")
+                    except Exception as e:
+                        st.error(f"🔴 فشل الاتصال! السيرفر يرفض المفتاح الحالي. السبب البرمجي: {e}")
+                else:
+                    st.warning("🟡 مفتاح OpenAI فارغ أو غير مضاف في الـ Secrets.")
+                
+                # فحص Gemini
+                st.markdown("### 2. محرك Gemini الاحتياطي:")
+                if gemini_key and genai:
+                    try:
+                        model_test = genai.GenerativeModel("gemini-1.5-flash")
+                        test_gem_res = model_test.generate_content("say ok")
+                        st.success("🟢 الاتصال ناجح تماماً! محرك Gemini الاحتياطي مستقر وجاهز للعمل عبر موديل 1.5 الحديث.")
+                    except Exception as e:
+                        st.error(f"🔴 فشل الاتصال بمحرك جيميناي الاحتياطي. السبب البرمجي: {e}")
+                else:
+                    st.warning("🟡 مفتاح Gemini غير مضاف في الـ Secrets.")
     else:
         render_user_services()
 
