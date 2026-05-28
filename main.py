@@ -78,16 +78,9 @@ def run_synchronous_progress():
     for percent in range(0, 101, 10):
         time.sleep(0.05)
         p_bar.progress(percent)
-        status_text.text(f"⏳ جاري معالجة البيانات عبر محرك جيفني الذكي... {percent}%")
+        status_text.text(f"⏳ جاري معالجة البيانات وتحليلها برمجياً... {percent}%")
     status_text.empty()
     p_bar.empty()
-
-def convert_to_word_provider(text, rtl=False):
-    bio = io.BytesIO()
-    decorated_text = "\u200f" + text.replace("\n", "\n\u200f") if rtl else text
-    bio.write(decorated_text.encode('utf-8'))
-    bio.seek(0)
-    return bio
 
 # ==========================================
 #     هندسة المظهر وتنسيقات الواجهة
@@ -260,6 +253,9 @@ def render_user_services():
         "💬 المستشار الذكي"
     ])
     
+    # رسالة خطأ آمنة ومبهمة لحماية الخصوصية والأسرار
+    generic_error_message = "⚠️ عذراً، حدث خطأ مؤقت في الاتصال ببوابة المعالجة الذكية. يرجى المحاولة مرة أخرى لاحقاً."
+
     # --- التبويب 1: معاينة ومناقشة المستند ---
     with sub_tabs[0]:
         st.subheader("📄 معاينة ومناقشة المستندات الفورية")
@@ -294,12 +290,15 @@ def render_user_services():
                     if chat_query.strip() and deduct_attempts(1):
                         run_synchronous_progress()
                         if gemini_available:
-                            model = genai.GenerativeModel("gemini-pro")
-                            response = model.generate_content(f"Based on document {uploaded_file.name}, answer in {target_lang_1}: {chat_query}")
-                            st.session_state.tab1_output = response.text
+                            try:
+                                model = genai.GenerativeModel("gemini-pro")
+                                response = model.generate_content(f"Based on document {uploaded_file.name}, answer in {target_lang_1}: {chat_query}")
+                                st.session_state.tab1_output = response.text
+                                st.markdown(st.session_state.tab1_output)
+                            except Exception:
+                                st.error(generic_error_message)
                         else:
-                            st.session_state.tab1_output = "يرجى إضافة مفتاح GEMINI_API_KEY الصالح في الـ Secrets لتفعيل الخدمة مجاناً."
-                        st.markdown(st.session_state.tab1_output)
+                            st.error(generic_error_message)
 
     # --- التبويب 2: المراجعة الأكاديمية والنقدية ---
     with sub_tabs[1]:
@@ -310,12 +309,15 @@ def render_user_services():
                 if deduct_attempts(5):
                     run_synchronous_progress()
                     if gemini_available:
-                        model = genai.GenerativeModel("gemini-pro")
-                        response = model.generate_content(f"Provide an intensive professional academic peer-review critique for the paper {uploaded_file.name} and output in {target_lang_2}.")
-                        st.session_state.tab2_output = response.text
+                        try:
+                            model = genai.GenerativeModel("gemini-pro")
+                            response = model.generate_content(f"Provide an intensive professional academic peer-review critique for the paper {uploaded_file.name} and output in {target_lang_2}.")
+                            st.session_state.tab2_output = response.text
+                            st.markdown(st.session_state.tab2_output)
+                        except Exception:
+                            st.error(generic_error_message)
                     else:
-                        st.session_state.tab2_output = "بوابة جيفني الذكية غير متصلة حالياً."
-                    st.markdown(st.session_state.tab2_output)
+                        st.error(generic_error_message)
 
     # --- التبويب 3: الترجمة الأكاديمية الاحترافية ---
     with sub_tabs[2]:
@@ -326,12 +328,15 @@ def render_user_services():
                 if deduct_attempts(6):
                     run_synchronous_progress()
                     if gemini_available:
-                        model = genai.GenerativeModel("gemini-pro")
-                        response = model.generate_content(f"Translate document {uploaded_file.name} to {target_lang_3} with strict academic style.")
-                        st.session_state.tab3_output = response.text
+                        try:
+                            model = genai.GenerativeModel("gemini-pro")
+                            response = model.generate_content(f"Translate document {uploaded_file.name} to {target_lang_3} with strict academic style.")
+                            st.session_state.tab3_output = response.text
+                            st.markdown(st.session_state.tab3_output)
+                        except Exception:
+                            st.error(generic_error_message)
                     else:
-                        st.session_state.tab3_output = "محرك الترجمة المجاني متوقف. يرجى مراجعة مفتاح السيرفر."
-                    st.markdown(st.session_state.tab3_output)
+                        st.error(generic_error_message)
 
     # --- التبويب 4: ترجمة المستندات القانونية ---
     with sub_tabs[3]:
@@ -343,14 +348,17 @@ def render_user_services():
                 if deduct_attempts(2):
                     run_synchronous_progress()
                     if gemini_available:
-                        model = genai.GenerativeModel("gemini-pro")
-                        response = model.generate_content(f"Translate legal document {uploaded_file.name} to {target_lang_4} officially for {legal_target_entity}.")
-                        st.session_state.tab4_output = response.text
+                        try:
+                            model = genai.GenerativeModel("gemini-pro")
+                            response = model.generate_content(f"Translate legal document {uploaded_file.name} to {target_lang_4} officially for {legal_target_entity}.")
+                            st.session_state.tab4_output = response.text
+                            st.markdown(st.session_state.tab4_output)
+                        except Exception:
+                            st.error(generic_error_message)
                     else:
-                        st.session_state.tab4_output = "الخدمة تتطلب كود اتصال جيفني نشط."
-                    st.markdown(st.session_state.tab4_output)
+                        st.error(generic_error_message)
 
-    # --- التبويب 5: صياغة وهندسة المخططات الهيكلية (تصحيح الأمان هنا) ---
+    # --- التبويب 5: صياغة وهندسة المخططات الهيكلية والأكاديمية ---
     with sub_tabs[4]:
         st.subheader("🎨 صياغة وهندسة المخططات الهيكلية والأكاديمية")
         image_prompt = st.text_area("ادخل عناصر المخطط العلمي أو الهيكلي المطلوب توصيفه وتدقيقه لغوياً:")
@@ -358,12 +366,15 @@ def render_user_services():
             if image_prompt.strip() and deduct_attempts(2):
                 run_synchronous_progress()
                 if gemini_available:
-                    model = genai.GenerativeModel("gemini-pro")
-                    response = model.generate_content(f"Act as an expert academic designer and global policy analyst. Elaborate and format a highly detailed academic structural outline based on this description for presentation slides: {image_prompt}")
-                    st.info("💡 تم صياغة وتوليد الهيكل النصي المصفف للمخطط بنجاح وبشكل مجاني:")
-                    st.write(response.text)
+                    try:
+                        model = genai.GenerativeModel("gemini-pro")
+                        response = model.generate_content(f"Act as an expert academic designer and global policy analyst. Elaborate and format a highly detailed academic structural outline based on this description for presentation slides: {image_prompt}")
+                        st.info("💡 تم صياغة وتوليد الهيكل النصي المصفف للمخطط بنجاح وبشكل مجاني:")
+                        st.write(response.text)
+                    except Exception:
+                        st.error(generic_error_message)
                 else:
-                    st.error("⚠️ عذراً دكتور، يرجى التأكد من إضافة مفتاح GEMINI_API_KEY بشكل صحيح داخل ملف الـ Secrets الخاص بـ Streamlit لتفعيل الميزة.")
+                    st.error(generic_error_message)
 
     # --- التبويب 6: توضيح الصورة بدقة عالية ---
     with sub_tabs[5]:
@@ -390,18 +401,28 @@ def render_user_services():
             if advisor_query.strip() and deduct_attempts(1):
                 run_synchronous_progress()
                 if gemini_available:
-                    model = genai.GenerativeModel("gemini-pro")
-                    response = model.generate_content(advisor_query)
-                    st.session_state.tab8_output = response.text
+                    try:
+                        model = genai.GenerativeModel("gemini-pro")
+                        response = model.generate_content(advisor_query)
+                        st.session_state.tab8_output = response.text
+                        st.write(st.session_state.tab8_output)
+                    except Exception:
+                        st.error(generic_error_message)
                 else:
-                    st.session_state.tab8_output = "المستشار الذكي الافتراضي: يرجى التحقق من توفر مفتاح Gemini للتفاعل المباشر."
-                st.write(st.session_state.tab8_output)
+                    st.error(generic_error_message)
 
 # ==========================================
 #         بوابة الإدارة والأمن
 # ==========================================
 if st.session_state.get("is_admin", False):
     st.markdown("## 🛠️ لوحة تحكم الإدارة العليا والسيرفر")
+    
+    # ميزة إضافية للآدمن فقط لرؤية حالة المفاتيح السرية
+    if not gemini_available:
+        st.sidebar.error("⚙️ تنبيه للآدمن: مفتاح GEMINI_API_KEY غير موجود في الـ Secrets!")
+    else:
+        st.sidebar.success("⚙️ تنبيه للآدمن: مفتاح جمني متصل ومحمي")
+        
     admin_root_tabs = st.tabs(["🖥️ الواجهة كما تظهر للمشترك", "🔑 توليد الكودات الخاصة", "📋 كشف الكودات المفعلة"])
     
     with admin_root_tabs[0]:
