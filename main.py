@@ -17,11 +17,12 @@ try:
 except Exception:
     fitz = None
 
+# إعداد وتصحيح الاتصال بمكتبة OpenAI بشكل مباشر وصحيح لمنع الانهيار
 try:
     from openai import OpenAI
-    # التحقق من وجود المفتاح في إعدادات Streamlit Secrets المخصصة للمشروع
-    if "OPENAI_API_KEY" in st.secrets and st.secrets["OPENAI_API_KEY"].strip() != "":
-        client = OpenAI(page_title="ScholarNode", api_key=st.secrets["OPENAI_API_KEY"])
+    if "OPENAI_API_KEY" in st.secrets:
+        # تصحيح دالة البناء وتمرير المفتاح فقط مباشرة
+        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
     else:
         client = None
 except Exception:
@@ -37,7 +38,7 @@ def init_db():
 
 init_db()
 
-# --- جدول الكروت الرسمي المعتمد من قبلك ---
+# --- جدول الكروت الرسمي ---
 PLANS = {
     1000: {"attempts": 10, "days": 3},
     5000: {"attempts": 60, "days": 20},
@@ -175,7 +176,7 @@ if "authenticated" not in st.session_state:
     st.stop()
 
 # ==========================================
-#     لوحة التحكم والشريط الجانبي للمشتركين والمدير
+#     لوحة التحكم والشريط الجانبي للمشتركين
 # ==========================================
 with st.sidebar:
     st.markdown(f"### 👋 أهلاً دكتور Courage")
@@ -359,7 +360,7 @@ def render_user_services():
         else:
             st.warning("⚠️ يرجى رفع الشهادة أو الوثيقة من شريط التحميل العلوي أولاً.")
 
-    # --- 5. تبويب توليد الصور والمخططات (محدّث ومحمي من الانهيار) ---
+    # --- 5. تبويب توليد الصور والمخططات (تم الإصلاح الشامل والجذري للاتصال) ---
     with sub_tabs[4]:
         st.subheader("🎨 توليد الرسوم والمخططات والشعارات الأكاديمية")
         image_desc = st.text_area("أدخل تفاصيل ومحتوى الصورة أو المخطط المطلوب كتابته بالعربية:")
@@ -368,17 +369,22 @@ def render_user_services():
         if st.button("🎨 ابدأ توليد الرسم الفني"):
             if image_desc.strip():
                 if not client:
-                    # عرض تنبيه واضح وحماية التطبيق بدلاً من الشاشة الحمراء
-                    st.error("⚠️ خطأ في الاتصال: لم يتم العثور على مفتاح ربط OpenAI (API Key) صالح في خادم الاستضافة. يرجى إضافته إلى Secrets أولاً.")
+                    st.error("⚠️ خطأ في الاتصال: لم يتم العثور على مفتاح ربط OpenAI (API Key) في خادم الاستضافة. يرجى إضافته إلى Secrets أولاً باسم OPENAI_API_KEY")
                 else:
                     try:
                         if deduct_attempts(5):
                             run_progress_bar()
-                            res = client.images.generate(model="dall-e-3", prompt=image_desc, n=1, size="1024x1024")
+                            res = client.images.generate(
+                                model="dall-e-3", 
+                                prompt=image_desc, 
+                                n=1, 
+                                size="1024x1024"
+                            )
                             st.session_state.generated_img_url = res.data[0].url
+                            st.success("🎉 تم توليد المخطط بنجاح!")
                             st.rerun()
                     except Exception as error_msg:
-                        st.error(f"❌ فشل الاتصال بالبوابة الخارجية: {str(error_msg)}")
+                        st.error(f"❌ فشل الاتصال بالبوابة الخارجية أو انتهت صلاحية المفتاح المضاف: {str(error_msg)}")
                         
         if "generated_img_url" in st.session_state:
             st.image(st.session_state.generated_img_url, caption="🖼️ المخطط البياني المولد من الذكاء الاصطناعي")
@@ -417,17 +423,25 @@ def render_user_services():
         advisor_input = st.text_area("اكتب أي استفسار علمي، منهجي، أو إداري عام تريد مناقشته:")
         if st.button("🧠 إرسال طلب الاستشارة الفورية"):
             if advisor_input.strip():
-                run_progress_bar()
-                if client:
-                    res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": advisor_input}])
-                    generated_content = res.choices[0].message.content
+                if not client:
+                    st.error("⚠️ خطأ في الاتصال: لم يتم العثور على مفتاح ربط OpenAI (API Key) في خادم الاستضافة.")
                 else:
-                    generated_content = "إجابة استشارية محكمة ومفصلة تم حساب تكلفتها التلقائية بناءً على حجم الكلمات الناتجة."
-                content_words = len(generated_content.split())
-                calculated_cost_advisor = max(1, content_words // 700)
-                if deduct_attempts(calculated_cost_advisor):
-                    st.session_state.advisor_res = generated_content
-                    st.rerun()
+                    try:
+                        run_progress_bar()
+                        res = client.chat.completions.create(
+                            model="gpt-4o-mini", 
+                            messages=[{"role": "user", "content": advisor_input}]
+                        )
+                        generated_content = res.choices[0].message.content
+                        content_words = len(generated_content.split())
+                        calculated_cost_advisor = max(1, content_words // 700)
+                        
+                        if deduct_attempts(calculated_cost_advisor):
+                            st.session_state.advisor_res = generated_content
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ خطأ في الاستشارة: {str(e)}")
+                        
         if "advisor_res" in st.session_state:
             st.info("💡 **توصية المستشار الأكاديمي للمنصة:**")
             st.markdown(st.session_state.advisor_res)
