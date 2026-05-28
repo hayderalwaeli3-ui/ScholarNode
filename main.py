@@ -441,19 +441,20 @@ else:
                 else:
                     st.warning("🟡 مفتاح OpenAI فارغ أو غير مضاف في الـ Secrets.")
                 
-                # فحص Gemini
-                st.markdown("### 2. محرك Gemini الاحتياطي:")
-                if gemini_key and genai:
-                    try:
-                        model_test = genai.GenerativeModel(model_name="models/gemini-1.5-flash")
-                        test_gem_res = model_test.generate_content("Hi")
-                        
-                        st.success("🟢 الاتصال ناجح تماماً! محرك Gemini الاحتياطي مستقر وجاهز للعمل عبر موديل 1.5 الحديث.")
-                    except Exception as e:
-                        st.error(f"🔴 فشل الاتصال بمحرك جيميناي الاحتياطي. السبب البرمجي: {e}")
-                else:
-                    st.warning("🟡 مفتاح Gemini غير مضاف في الـ Secrets.")
+                # --- فحص محرك Gemini الاحتياطي المستقر لعام 2026 ---
+        st.markdown("### 2. محرك Gemini الاحتياطي:")
+        if gemini_key and genai:
+            try:
+                # الاستدعاء المباشر والمستقر لتفادي أخطاء السيرفر القديمة
+                model_test = genai.GenerativeModel('gemini-1.5-flash')
+                test_gem_res = model_test.generate_content("Hi")
+                st.success("🟢 محرك Gemini 1.5 الحديث الاحتياطي مستقر وجاهز للعمل، والاتصال ناجح تماماً!")
+            except Exception as e:
+                st.error(f"🔴 فشل الاتصال بمحرك جيميناي الاحتياطي. السبب البرمجي: {e}")
+        else:
+            st.warning("🟡 مفتاح Gemini غير مضاف في الـ Secrets أو مكتبة قوقل لم تُستورد.")
+            
     else:
         render_user_services()
-
+        
     st.markdown("<br><br><hr><p style='text-align:center;'>ScholarNode Academy © 2026</p>", unsafe_allow_html=True)
