@@ -445,8 +445,9 @@ else:
                 st.markdown("### 2. محرك Gemini الاحتياطي:")
                 if gemini_key and genai:
                     try:
-                        model_test = genai.GenerativeModel("gemini-1.5-flash")
-                        test_gem_res = model_test.generate_content("say ok")
+                        model_test = genai.GenerativeModel(model_name="models/gemini-1.5-flash")
+                        test_gem_res = model_test.generate_content("Hi")
+                        
                         st.success("🟢 الاتصال ناجح تماماً! محرك Gemini الاحتياطي مستقر وجاهز للعمل عبر موديل 1.5 الحديث.")
                     except Exception as e:
                         st.error(f"🔴 فشل الاتصال بمحرك جيميناي الاحتياطي. السبب البرمجي: {e}")
