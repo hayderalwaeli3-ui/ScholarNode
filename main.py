@@ -1,46 +1,41 @@
-from flask import Flask, request, jsonify
+import streamlit as st
+import pandas as pd
+from google import genai
+from google.genai import types
+import os
 
-app = Flask(__name__)
+# إعداد محرك Gemini
+client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 
-# قاعدة بيانات وهمية (يتم استبدالها بقاعدة بيانات حقيقية لاحقاً)
-user_database = {
-    "CODE123": {"attempts": 100, "status": "active"},
-    "HAYDER_2026$$$": {"role": "admin"} # كود الإدارة
-}
+def get_gemini_response(prompt, model="gemini-2.0-flash"):
+    """دالة مركزية للاتصال بـ Gemini مع مراعاة التكلفة"""
+    try:
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_level="HIGH"),
+            ),
+        )
+        return response.text
+    except Exception as e:
+        return f"خطأ في الاتصال: {e}"
 
-def check_and_deduct(code, cost):
-    """دالة خصم المحاولات المركزية"""
-    if code in user_database and user_database[code].get("status") == "active":
-        if user_database[code]["attempts"] >= cost:
-            user_database[code]["attempts"] -= cost
-            return True, user_database[code]["attempts"]
-    return False, 0
+# --- التبويبات والخدمات ---
+def render_main_interface():
+    # هنا يتم وضع التبويبات الثمانية
+    # كل تبويب يستدعي دالة الخصم المالية قبل تنفيذ أي أمر
+    pass
 
-@app.route('/api/translate', methods=['POST'])
-def translate_document():
-    data = request.json
-    code = data.get("code")
-    pages = data.get("pages") # عدد الصفحات يحدد التكلفة
-    
-    # كل صفحة تعد محاولة واحدة
-    success, remaining = check_and_deduct(code, pages)
-    
-    if success:
-        # هنا يتم استدعاء Gemini API للترجمة
-        # result = gemini_api.translate(data['text'])
-        return jsonify({"status": "success", "remaining_attempts": remaining})
-    else:
-        return jsonify({"status": "error", "message": "رصيد غير كافٍ أو كود غير صالح"})
+def deduct_balance(tab_name, input_content):
+    """السياسة المالية: حساب الخصم التلقائي حسب نوع الخدمة"""
+    # 1. معاينة/مراجعة: 1 محاولة لكل صفحة
+    # 2. توليد الصوت: 1 محاولة لكل 40 كلمة
+    # 3. المستشار: 1 محاولة لكل 700 كلمة
+    # 4. الصور: 5 محاولات
+    pass
 
-@app.route('/api/generate_image', methods=['POST'])
-def generate_image():
-    code = data.get("code")
-    # خصم 5 محاولات للصورة الواحدة
-    success, remaining = check_and_deduct(code, 5)
-    
-    if success:
-        return jsonify({"status": "image_generated", "remaining": remaining})
-    return jsonify({"status": "error", "message": "رصيد غير كافٍ"})
-
-if __name__ == '__main__':
-    app.run(debug=True)
+# --- نظام الإدارة ---
+if st.session_state.get('user_code') == "HAYDER_2026$$$":
+    # عرض تبويبات الإدارة (توليد الكودات، مراقبة الكودات المفعلة)
+    pass
