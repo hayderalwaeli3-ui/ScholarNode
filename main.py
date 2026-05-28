@@ -1,5 +1,19 @@
 import streamlit as st
 
+import google.generativeai as genai
+import openai
+
+# تعريف متغيرات عامة
+if "GEMINI_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    model = genai.GenerativeModel('gemini-1.5-flash')
+else:
+    model = None
+
+if "OPENAI_API_KEY" in st.secrets:
+    client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+else:
+    client = None
 # 1. إعداد الصفحة الموحد (يجب أن يكون أول سطر برمي في التطبيق)
 st.set_page_config(page_title="ScholarNode", layout="wide", initial_sidebar_state="expanded")
 
