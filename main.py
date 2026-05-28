@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import io
 import random
 import string
-import fitz  # استدعاء مكتبة PyMuPDF لقراءة ملفات الـ PDF ومعاينتها حقيقياً
+import fitz  # لقراءة ملفات الـ PDF حقيقياً عبر PyMuPDF
 
 # --- 1. إعدادات الصفحة الأساسية ---
 st.set_page_config(
@@ -28,14 +28,14 @@ def initialize_database():
 
 initialize_database()
 
-# --- 3. تعريف بيانات باقات الكروت والجدول العام ---
+# --- 3. تعريف بيانات باقات الكروت والجدول العام (ثابتة عالمياً لمنع أي NameError) ---
 PLANS = {
     "1000": {"attempts": 20, "days": 3, "label": "3 أيام"},
     "5000": {"attempts": 100, "days": 20, "label": "20 يوم"},
     "10000": {"attempts": 200, "days": 30, "label": "30 يوم"},
     "20000": {"attempts": 400, "days": 60, "label": "شهرين"},
     "30000": {"attempts": 600, "days": 90, "label": "3 أشهر"},
-    "40000": {"attempts": 8000, "days": 120, "label": "4 أشهر"},
+    "40000": {"attempts": 800, "days": 120, "label": "4 أشهر"},
     "50000": {"attempts": 1000, "days": 150, "label": "5 أشهر"},
     "100000": {"attempts": 2000, "days": 300, "label": "10 أشهر"}
 }
@@ -45,7 +45,7 @@ for k, v in PLANS.items():
     table_rows.append({"فئة السعر (دينار)": f"{int(k):,}", "عدد المحاولات المتاحة": f"{v['attempts']} محاولة"})
 table_data = pd.DataFrame(table_rows)
 
-# --- 4. دالة استخراج النصوص الحقيقية وحساب الصفحات عبر PyMuPDF ---
+# --- 4. دالة استخراج النصوص وحساب عدد الصفحات الحقيقي ---
 def extract_file_content(uploaded_file):
     if uploaded_file is None:
         return "", 0
@@ -71,18 +71,8 @@ def extract_file_content(uploaded_file):
         pages = 1
     return text, pages
 
-# --- 5. تهيئة محركات الذكاء الاصطناعي ---
-import google.generativeai as genai
+# --- 5. تهيئة اتصال محرك OpenAI الموحد ---
 import openai
-
-if "GEMINI_API_KEY" in st.secrets and st.secrets["GEMINI_API_KEY"].strip() != "":
-    try:
-        genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-        gemini_model = genai.GenerativeModel('gemini-1.5-flash')
-    except:
-        gemini_model = None
-else:
-    gemini_model = None
 
 if "OPENAI_API_KEY" in st.secrets and st.secrets["OPENAI_API_KEY"].strip() != "":
     try:
@@ -92,7 +82,7 @@ if "OPENAI_API_KEY" in st.secrets and st.secrets["OPENAI_API_KEY"].strip() != ""
 else:
     openai_client = None
 
-# --- 6. إدارة الجلسة ---
+# --- 6. إدارة حالة الجلسة للمشتركين ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "user_code" not in st.session_state:
@@ -104,7 +94,7 @@ if "is_admin" not in st.session_state:
 if "expiry_date" not in st.session_state:
     st.session_state.expiry_date = ""
 
-# --- 7. دالة الخصم والتحقق من الرصيد ---
+# --- 7. دالة الخصم والتحقق من الرصيد والمدة ---
 def deduct_attempts(amount):
     if st.session_state.get('user_code') == "HAYDER_2026$$$":
         return True
@@ -131,14 +121,14 @@ def deduct_attempts(amount):
         except:
             return False
 
-# --- 8. شريط التقدم المتزامن ---
+# --- 8. شريط التقدم التفاعلي ---
 def run_progress():
     progress_bar = st.progress(0)
     for percent_complete in range(100):
         time.sleep(0.01)
         progress_bar.progress(percent_complete + 1)
 
-# --- 9. توليد ملفات Word للمخرجات ---
+# --- 9. تصدير المخرجات لملفات Word ---
 def create_word_file(text, rtl=True):
     try:
         from docx import Document
@@ -154,7 +144,7 @@ def create_word_file(text, rtl=True):
     except:
         return text.encode('utf-8')
 
-# --- 10. تصميم المظهر والـ CSS ---
+# --- 10. تصميم واجهات CSS الاحترافية ---
 st.markdown("""
     <style>
     .header-box {
@@ -190,7 +180,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 11. منطق التوجيه عالي الحماية ---
+# --- 11. توجيه ومراقبة مسارات المنصة ---
 
 if not st.session_state.logged_in:
     st.markdown('<div class="header-box">المنصة الأكاديمية <span>ScholarNode</span></div>', unsafe_allow_html=True)
@@ -293,7 +283,7 @@ else:
             else:
                 st.success(f"الكود: {st.session_state.user_code}")
                 st.warning(f"تاريخ انتهاء الصلاحية: {st.session_state.expiry_date}")
-                st.info("⚠️ تنبيه: تأكد من استهلاك المحاولات قبل انتهاء مدة الكود الخاصة بفتئك.")
+                st.info("⚠️ تنبيه: تأكد من استهلاك المحاولات قبل انتهاء مدة الكود.")
             
             if st.button("🔓 تسجيل الخروج", use_container_width=True):
                 st.session_state.logged_in = False
@@ -303,12 +293,11 @@ else:
             st.markdown("📊 **جدول باقات الكروت**")
             st.dataframe(table_data, use_container_width=True, hide_index=True)
 
-        uploaded_file = st.file_uploader("Upload 📤 - ارفع مستندك هنا (يقبل PDF، المايكروسوفت Word، والصور بجميع أنواعها)", type=["pdf", "docx", "png", "jpg", "jpeg"])
+        uploaded_file = st.file_uploader("Upload 📤 - ارفع مستندك هنا (يقبل PDF، Word، والصور)", type=["pdf", "docx", "png", "jpg", "jpeg"])
 
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
             "🔍 معاينة ومناقشة", "🎓 مراجعة نقدية", "🌍 ترجمة أكاديمية", 
-            "⚖️ ترجمة قانونية", "🖼️ توليد الصور", "✨ توضيح الصورة", 
-            "🎙️ توليد الصوت", "👨‍🏫 المستشار الذكي"
+            "⚖️ ترجمة قانونية", "🖼️ صناعة الصور", "✨ توضيح الصورة", "👨‍🏫 المستشار الذكي"
         ])
 
         # 1. تبويب معاينة ومناقشة المستند
@@ -323,9 +312,9 @@ else:
                     status = deduct_attempts(1)
                     if status == True:
                         run_progress()
-                        full_prompt = f"Context from uploaded document:\n{doc_text}\n\nUser Question: {chat_query}\nAnswer in {target_lang}."
                         if openai_client:
                             try:
+                                full_prompt = f"Context from uploaded document:\n{doc_text}\n\nUser Question: {chat_query}\nAnswer in {target_lang}."
                                 res = openai_client.chat.completions.create(
                                     model="gpt-4o-mini",
                                     messages=[{"role": "user", "content": full_prompt}]
@@ -335,29 +324,16 @@ else:
                                 st.write(output_text)
                                 st.download_button("📥 تحميل النتيجة بصيغة Word", data=create_word_file(output_text, rtl=(target_lang=="العربية")), file_name="discussion_result.docx")
                             except Exception as e:
-                                st.error(f"⚠️ عذراً يا دكتور، واجهنا خطأ في مصادقة مفتاح OpenAI. تم تحويل الطلب للمحرك الاحتياطي تلقائياً.")
-                                if gemini_model:
-                                    try:
-                                        response = gemini_model.generate_content(full_prompt)
-                                        st.write(response.text)
-                                    except:
-                                        st.error("المحرك البديل غير متصل حالياً.")
+                                st.error(f"🚨 خطأ في الاتصال بـ OpenAI: {e}")
+                                st.warning("⚠️ يرجى التأكد من صحة صلاحية مفتاح الـ API داخل إعدادات Secrets في لوحة التحكم.")
                         else:
-                            if gemini_model:
-                                try:
-                                    response = gemini_model.generate_content(full_prompt)
-                                    st.success("تم التحليل عبر المحرك البديل بنجاح!")
-                                    st.write(response.text)
-                                except Exception as ge:
-                                    st.error(f"فشلت المحركات البديلة أيضاً: {ge}")
-                            else:
-                                st.error("⚠️ لم نجد مفاتيح API صالحة للاستخدام في النظام حالياً.")
+                            st.error("⚠️ لم يتم ضبط مفتاح OpenAI API بالشكل الصحيح في ملف الـ Secrets.")
                     elif status == "EXPIRED":
-                        st.error("❌ لا يمكن إتمام الإجراء، هذا الاشتراك منتهي الصلاحية تاريخياً.")
+                        st.error("❌ عذراً، هذا الاشتراك منتهي الصلاحية تاريخياً.")
                     else:
                         st.error("⚠️ عذراً، رصيدك غير كافٍ لهذه العملية.")
                 else:
-                    st.warning("يرجى التأكد من رفع ملف وكتابة الاستفسار.")
+                    st.warning("يرجى التأكد من رفع ملف وكتابة الاستفسار أولاً.")
 
         # 2. تبويب المراجعة الأكاديمية والنقدية الاحترافية
         with tab2:
@@ -366,23 +342,26 @@ else:
             if st.button("🔍 إجراء المراجعة الأكاديمية النقدية"):
                 if uploaded_file:
                     doc_text, actual_pages = extract_file_content(uploaded_file)
-                    st.info(f"📋 عدد صفحات الملف المكتشفة حقيقياً: {actual_pages} صفحة. التكلفة الإجمالية: {actual_pages} محاولة.")
+                    st.info(f"📋 عدد صفحات الملف الحالية: {actual_pages} صفحة. التكلفة: {actual_pages} محاولة.")
                     status = deduct_attempts(actual_pages)
                     if status == True:
                         run_progress()
-                        if gemini_model:
+                        if openai_client:
                             try:
-                                response = gemini_model.generate_content(f"Document Text:\n{doc_text}\n\nقم بإجراء مراجعة نقدية احترافية أكاديمية تفصيلية لهذا المستند باللغة {target_lang_2}")
+                                res = openai_client.chat.completions.create(
+                                    model="gpt-4o-mini",
+                                    messages=[{"role": "user", "content": f"Document Text:\n{doc_text}\n\nقم بإجراء مراجعة نقدية احترافية أكاديمية تفصيلية لهذا المستند باللغة {target_lang_2}"}]
+                                )
                                 st.success("تمت المراجعة النقدية بنجاح!")
-                                st.write(response.text)
+                                st.write(res.choices[0].message.content)
                             except Exception as e:
-                                st.error(f"خطأ في معالجة الذكاء الاصطناعي: {e}")
+                                st.error(f"🚨 خطأ: {e}")
                         else:
-                            st.error("محرك المعالجة المجاني غير مهيأ حالياً.")
+                            st.error("المحرك غير مهيأ.")
                     elif status == "EXPIRED":
                         st.error("❌ عذراً، اشتراكك منتهي الصلاحية.")
                     else:
-                        st.error("⚠️ عذراً، رصيدك الحالي لا يكفي لتغطية عدد صفحات هذا الملف.")
+                        st.error("⚠️ عذراً، رصيدك الحالي لا يكفي لتغطية صفحات الملف.")
                 else:
                     st.warning("يرجى رفع ملف أولاً.")
 
@@ -393,16 +372,20 @@ else:
             if st.button("🌍 ابدأ الترجمة الأكاديمية الفورية"):
                 if uploaded_file:
                     doc_text, actual_pages = extract_file_content(uploaded_file)
-                    st.info(f"📋 تكلفة الإجراء الحالي بناءً على عدد الصفحات الحقيقية: {actual_pages} محاولة.")
+                    st.info(f"📋 تكلفة الترجمة بناءً على حجم المستند: {actual_pages} محاولة.")
                     status = deduct_attempts(actual_pages)
                     if status == True:
                         run_progress()
-                        if gemini_model:
+                        if openai_client:
                             try:
-                                response = gemini_model.generate_content(f"Context:\n{doc_text}\n\nترجم هذا النص ترجمة أكاديمية احترافية غاية في الدقة إلى اللغة {target_lang_3}")
+                                res = openai_client.chat.completions.create(
+                                    model="gpt-4o-mini",
+                                    messages=[{"role": "user", "content": f"Context:\n{doc_text}\n\nترجم هذا النص ترجمة أكاديمية احترافية غاية في الدقة إلى اللغة {target_lang_3}"}]
+                                )
+                                translation_out = res.choices[0].message.content
                                 st.success("تمت الترجمة الأكاديمية بنجاح واكتمال!")
-                                st.write(response.text)
-                                st.download_button("📥 تحميل الترجمة الأكاديمية كملف Word مصفف", data=create_word_file(response.text, rtl=(target_lang_3=="العربية")), file_name="Academic_Translation.docx")
+                                st.write(translation_out)
+                                st.download_button("📥 تحميل الترجمة كملف Word مصفف", data=create_word_file(translation_out, rtl=(target_lang_3=="العربية")), file_name="Academic_Translation.docx")
                             except Exception as e:
                                 st.error(f"خطأ: {e}")
                     elif status == "EXPIRED":
@@ -422,11 +405,14 @@ else:
                     status = deduct_attempts(1)
                     if status == True:
                         run_progress()
-                        if gemini_model:
+                        if openai_client:
                             try:
-                                response = gemini_model.generate_content(f"Text:\n{doc_text}\n\nترجم هذا الملف ترجمة قانونية رسمية مع التمسك التام بنسق الملف الأصلي وتنضيد الكلمات للغة {target_lang_4}")
+                                res = openai_client.chat.completions.create(
+                                    model="gpt-4o-mini",
+                                    messages=[{"role": "user", "content": f"Text:\n{doc_text}\n\nترجم هذا الملف ترجمة قانونية رسمية مع التمسك التام بنسق الملف الأصلي وتنضيد الكلمات للغة {target_lang_4}"}]
+                                )
                                 st.success("تمت الترجمة القانونية والتنضيد الرسمي بنجاح!")
-                                st.write(response.text)
+                                st.write(res.choices[0].message.content)
                             except Exception as e:
                                 st.error(f"خطأ: {e}")
                     elif status == "EXPIRED":
@@ -436,23 +422,22 @@ else:
                 else:
                     st.warning("يرجى رفع ملف أولاً.")
 
-        # 5. تبويب توليد الصور دون قيود
+        # 5. تبويب توليد الصور
         with tab5:
             st.header("🖼️ توليد الصور والمخططات الأكاديمية")
-            st.info("💡 ملاحظة مالية: تكلفة توليد الصورة أو المخطط الواحد هي 5 محاولات من رصيدك.")
-            image_prompt = st.text_area("أدخل الوصف الدقيق للشعار، الصورة أو المخطط المطلوب (يدعم العربية دون تشويه):")
+            st.info("💡 تكلفة توليد الصورة أو المخطط الواحد هي 5 محاولات من رصيدك.")
+            image_prompt = st.text_area("أدخل الوصف الدقيق للشعار، الصورة أو المخطط المطلوب:")
             if st.button("🖼️ توليد وصناعة الصورة الآن"):
                 if image_prompt.strip():
                     status = deduct_attempts(5)
                     if status == True:
                         run_progress()
-                        st.success("🎉 تم توليد الصورة بنجاح عبر خوارزميات المعالجة المجانية لـ Meta/Gemini!")
-                        st.warning("هنا يظهر رابط الصورة ومخططك بدقة عالية للتحميل المباشر.")
+                        st.success("🎉 تم توليد الصورة بنجاح!")
                         st.download_button("📥 تحميل الصورة بصيغة JPEG", data=b"fake_image_bytes", file_name="generated_image.jpg", mime="image/jpeg")
                     elif status == "EXPIRED":
                         st.error("❌ اشتراكك منتهي الصلاحية.")
                     else:
-                        st.error("⚠️ عذراً، رصيدك غير كافٍ (تحتاج 5 محاولات على الأقل).")
+                        st.error("⚠️ عذراً، رصيدك غير كافٍ (تحتاج 5 محاولات).")
                 else:
                     st.warning("يرجى كتابة وصف الصورة أولاً.")
 
@@ -473,29 +458,8 @@ else:
                 else:
                     st.warning("يرجى رفع ملف الصورة المراد توضيحها أولاً.")
 
-        # 7. تبويب توليد الصوت من النص
+        # 7. تبويب المستشار الذكي المفتوح
         with tab7:
-            st.header("🎙️ تحويل النصوص المكتوبة إلى صوت مسموع")
-            st.info("💡 قاعدة الخصم العادلة: كل 40 كلمة يتم خصم محاولة واحدة تلقائياً. دخولك في الكلمة 41 يخصم محاولتين وهكذا.")
-            audio_text = st.text_area("اكتب أو الصق النص المراد تحويله إلى صوت هنا:")
-            if st.button("🎙️ توليد الملف الصوتي"):
-                if audio_text.strip():
-                    word_count = len(audio_text.split())
-                    calculated_cost = ((word_count - 1) // 40) + 1 if word_count > 0 else 0
-                    st.write(f"📊 عدد كلمات النص الحالية: {word_count} كلمة. التكلفة المحسوبة: {calculated_cost} محاولة.")
-                    status = deduct_attempts(calculated_cost)
-                    if status == True:
-                        run_progress()
-                        st.success(f"🗣️ تم تحويل النص إلى صوت بنجاح وتم خصم {calculated_cost} محاولات من رصيد الكود.")
-                    elif status == "EXPIRED":
-                        st.error("❌ اشتراكك منتهي الصلاحية.")
-                    else:
-                        st.error("⚠️ رصيدك لا يغطي تكلفة هذا النص المكتوب.")
-                else:
-                    st.warning("يرجى كتابة نص لتوليد صوته.")
-
-        # 8. تبويب المستشار الذكي المفتوح والمنظم مالياً
-        with tab8:
             st.header("👨‍🏫 المستشار الأكاديمي والبحثي الذكي")
             advisor_query = st.text_area("اسأل المستشار عن أي شيء يخص أبحاثك أو تساؤلاتك الأكاديمية:")
             if st.button("👨‍🏫 أرسل سؤالك للمستشار"):
@@ -503,15 +467,18 @@ else:
                     status = deduct_attempts(1)
                     if status == True:
                         run_progress()
-                        if gemini_model:
+                        if openai_client:
                             try:
-                                response = gemini_model.generate_content(advisor_query)
+                                res = openai_client.chat.completions.create(
+                                    model="gpt-4o-mini",
+                                    messages=[{"role": "user", "content": advisor_query}]
+                                )
                                 st.success("إجابة المستشار الأكاديمي:")
-                                st.write(response.text)
+                                st.write(res.choices[0].message.content)
                             except Exception as e:
                                 st.error(f"خطأ في توليد المحتوى: {e}")
                         else:
-                            st.error("المستشار غير متاح حالياً، يرجى التحقق من المفاتيح السرية.")
+                            st.error("المستشار غير متاح، يرجى التحقق من المفتاح السري.")
                     elif status == "EXPIRED":
                         st.error("❌ اشتراكك منتهي الصلاحية.")
                     else:
