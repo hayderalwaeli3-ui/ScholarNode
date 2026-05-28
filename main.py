@@ -1,6 +1,6 @@
 import streamlit as st
 
-# 1. إعداد الصفحة الموحد كأول أمر برمي
+# 1. إعداد الصفحة الموحد كأول أمر برمي إلزامياً في المنصة
 st.set_page_config(page_title="ScholarNode", layout="wide", initial_sidebar_state="expanded")
 
 import pandas as pd
@@ -10,21 +10,19 @@ import random
 import string
 import time
 from datetime import datetime, timedelta
-
-# استدعاء محرك المخططات البيانية المستقل
 import matplotlib.pyplot as plt
 
-# محاولات استدعاء مكاتب معالجة ملفات PDF والصور بمرونة
+# محاولات استدعاء مكاتب معالجة ملفات PDF
 try:
-    import fitz  # PyMuPDF للمعاينة الحقيقية
+    import fitz  # PyMuPDF للمعاينة الحية للباحثين
 except Exception:
     fitz = None
 
 # ==========================================
-#   إعداد بوابات الاتصال الهجينة بالذكاء الاصطناعي
+#   إعداد بوابات الاتصال بالذكاء الاصطناعي
 # ==========================================
 
-# أ. إعداد بوابة OpenAI الفنية
+# أ. إعداد بوابة OpenAI الفنية للنصوص والاستشارات فقط
 try:
     from openai import OpenAI
     if "OPENAI_API_KEY" in st.secrets:
@@ -34,7 +32,7 @@ try:
 except Exception:
     openai_client = None
 
-# ب. إعداد بوابة Google Gemini الفنية
+# ب. إعداد بوابة Google Gemini الفنية للترجمة والمناقشة
 try:
     import google.generativeai as genai
     if "GEMINI_API_KEY" in st.secrets:
@@ -56,7 +54,6 @@ def init_db():
 
 init_db()
 
-# فئات الاشتراكات الرسمية، الصلاحيات، والمحاولات
 PLANS = {
     1000: {"attempts": 20, "days": 3, "label": "3 أيام"},
     5000: {"attempts": 100, "days": 20, "label": "20 يوم"},
@@ -91,7 +88,7 @@ def run_synchronous_progress():
     p_bar = st.progress(0)
     status_text = st.empty()
     for percent in range(0, 101, 10):
-        time.sleep(0.08)
+        time.sleep(0.05)
         p_bar.progress(percent)
         status_text.text(f"⏳ جاري معالجة البيانات الأكاديمية بذكاء هجين... {percent}%")
     status_text.empty()
@@ -155,7 +152,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# التحقق من صلاحية الجلسة
 if "authenticated" in st.session_state and st.session_state.user_code != "HAYDER_2026$$$":
     try:
         df_check = pd.read_csv(DB_CODES)
@@ -169,7 +165,7 @@ if "authenticated" in st.session_state and st.session_state.user_code != "HAYDER
         pass
 
 # ==========================================
-#   أولاً: تصميم الواجهة الرئيسية (قبل الدخول)
+#   الواجهة الرئيسية (قبل الدخول)
 # ==========================================
 if "authenticated" not in st.session_state:
     st.markdown('<div class="welcome-header-box"><h1>ScholarNode</h1></div>', unsafe_allow_html=True)
@@ -240,7 +236,7 @@ if "authenticated" not in st.session_state:
     st.stop()
 
 # ==========================================
-#   ثانياً: الشريط الجانبي الأيسر للمشتركين
+#   الشريط الجانبي الأيسر للمشتركين
 # ==========================================
 with st.sidebar:
     st.markdown("### 🛠️ إدارة الحساب الحالي")
@@ -270,7 +266,7 @@ with st.sidebar:
         st.rerun()
 
 # ==========================================
-#      ثالثاً: الخدمات والتبويبات الرئيسية
+#      الخدمات والتبويبات الرئيسية
 # ==========================================
 def render_user_services():
     st.markdown(f"""
@@ -280,7 +276,7 @@ def render_user_services():
     </div>
     """, unsafe_allow_html=True)
     
-    uploaded_file = st.file_uploader("📂 Upload: ارفع مستند البحث أو الوثيقة أو الصورة هنا لمرة واحدة فقط لتغذية كافة التبويبات المعالجة:", type=["pdf", "docx", "doc", "png", "jpg", "jpeg"])
+    uploaded_file = st.file_uploader("📂 Upload: ارفع مستند البحث أو الوثيقة أو الصورة هنا لمرة واحدة فقط لتغذية كافة الأقسام:", type=["pdf", "docx", "doc", "png", "jpg", "jpeg"])
     
     sub_tabs = st.tabs([
         "📄 معاينة ومناقشة المستند",
@@ -378,7 +374,7 @@ def render_user_services():
         else:
             st.warning("⚠️ يرجى رفع ملف من شريط التحميل العلوي لتحديد عدد الصفحات واحتساب الكلفة النقدية.")
 
-    # --- التبويب 3: 🌍 الترجمة الأكاديمية الاحترافية ---
+    # --- التبويب 3: الترجمة الأكاديمية الاحترافية ---
     with sub_tabs[2]:
         st.subheader("🌍 الترجمة الأكاديمية الاحترافية (محاذاة وتنسيق كامل)")
         if uploaded_file:
@@ -402,12 +398,11 @@ def render_user_services():
                         st.rerun()
                         
             if "tab3_output" in st.session_state:
-                is_rtl = (target_lang_3 == "العربية")
-                st.download_button("📥 تحميل البحث المترجم كاملاً كملف Word مصفف", data=convert_to_word_provider(st.session_state.tab3_output, rtl=is_rtl), file_name="Academic_Translation.docx")
+                st.download_button("📥 تحميل البحث المترجم كاملاً كملف Word مصفف", data=convert_to_word_provider(st.session_state.tab3_output, rtl=(target_lang_3 == "العربية")), file_name="Academic_Translation.docx")
         else:
             st.warning("⚠️ يرجى رفع المستند البحثي من شريط التحميل العلوي أولاً.")
 
-    # --- التبويب 4: ترجمة المستندات ترجمة قانونية ---
+    # --- التبويب 4: ترجمة المستندات القانونية ---
     with sub_tabs[3]:
         st.subheader("⚖️ صياغة وتنضيد المستندات والشهادات والوثائق القانونية")
         if uploaded_file:
@@ -427,19 +422,19 @@ def render_user_services():
         else:
             st.warning("⚠️ يرجى رفع ملف الشهادة الشخصية أو الوثيقة من شريط التحميل العلوي.")
 
-    # --- التبويب 5: توليد الصور والمخططات (تم إصلاح العطل النحوي هنا وحذف الكود التالف) ---
+    # --- التبويب 5: توليد الصور والمخططات (تم تصفية هذا القسم جذرياً ومنع أخطاء التداخل النحوي) ---
     with sub_tabs[4]:
         st.subheader("🎨 توليد المخططات والشعارات والرسوم الأكاديمية دون قيود")
-        image_prompt = st.text_area("ادخل الوصف التفصيلي أو محتوى الشعار والمخطط المطلوب كتابته:")
+        image_prompt = st.text_area("ادخل الوصف التفصيلي أو محتوى الشعار والمخطط المطلوب كتابته ورسمه:")
         st.caption("🎯 التكلفة الثابتة: يتم خصم 5 محاولات للطلب الواحد.")
         
         if st.button("🎨 ابدأ هندسة وتوليد الرسم"):
             if image_prompt.strip() and deduct_attempts(5):
                 run_synchronous_progress()
                 
-                # استخدام محرك الرسوم المستقل الآمن والمجاني 
+                # بناء الرسم والمخطط محلياً وبشكل آمن تماماً يضمن تشغيل السيرفر فورا
                 fig, ax = plt.subplots(figsize=(6, 4))
-                ax.text(0.5, 0.5, f"ScholarNode Diagram:\n{image_prompt[:45]}", fontsize=14, ha='center', va='center', color='#1e40af', weight='bold')
+                ax.text(0.5, 0.5, f"ScholarNode Academic Diagram:\n{image_prompt[:45]}", fontsize=12, ha='center', va='center', color='#1e40af', weight='bold')
                 ax.set_facecolor('#f0f9ff')
                 for spine in ax.spines.values():
                     spine.set_color('#eab308')
@@ -448,13 +443,13 @@ def render_user_services():
                 buf = io.BytesIO()
                 plt.savefig(buf, format='jpeg', bbox_inches='tight')
                 plt.close(fig)
-                st.session_state.tab5_img_bytes = buf.getvalue()
-                st.success("🎉 تم إنتاج الصورة والمخطط بنجاح دون مشاكل برمجة أو قيود مالية!")
+                st.session_state.secure_canvas_bytes = buf.getvalue()
+                st.success("🎉 تم إنتاج المخطط بنجاح ومحلياً دون أخطاء في استدعاء الدوال الخارجية!")
                 st.rerun()
                 
-        if "tab5_img_bytes" in st.session_state:
-            st.image(st.session_state.tab5_img_bytes, caption="🖼️ المخطط البياني والشعار المولد بدقة JPEG")
-            st.download_button("📥 تحميل المخطط بصيغة JPEG", data=st.session_state.tab5_img_bytes, file_name="ScholarNode_Image.jpg", mime="image/jpeg")
+        if "secure_canvas_bytes" in st.session_state:
+            st.image(st.session_state.secure_canvas_bytes, caption="🖼️ المخطط البياني المولد بدقة JPEG")
+            st.download_button("📥 تحميل المخطط بصيغة JPEG", data=st.session_state.secure_canvas_bytes, file_name="ScholarNode_Image.jpg", mime="image/jpeg")
 
     # --- التبويب 6: توضيح الصورة بدقة عالية ---
     with sub_tabs[5]:
@@ -491,7 +486,7 @@ def render_user_services():
         else:
             st.info("💡 أدخل نصاً في الحقل المخصص لتظهر لك التكلفة الدقيقة لعدد المحاولات التقديرية.")
 
-    # --- التبويب 8: المستشار الذكي المفتوح والمسؤول ---
+    # --- التبويب 8: المستشار الذكي ---
     with sub_tabs[7]:
         st.subheader("💬 المستشار الأكاديمي والمنهجي المفتوح")
         advisor_query = st.text_area("طرح أي سؤال علمي أو إداري أو منهجي يخص المنصة الأكاديمية:")
@@ -522,7 +517,7 @@ def render_user_services():
             st.write(st.session_state.tab8_output)
 
 # ==========================================
-#         رابعاً: بوابة الإدارة والأمن
+#         بوابة الإدارة والأمن
 # ==========================================
 if st.session_state.get("is_admin", False):
     st.markdown("## 🛠️ لوحة تحكم الإدارة العليا والسيرفر")
