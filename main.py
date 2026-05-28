@@ -19,8 +19,9 @@ except Exception:
 
 try:
     from openai import OpenAI
-    if "OPENAI_API_KEY" in st.secrets:
-        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+    # التحقق من وجود المفتاح في إعدادات Streamlit Secrets المخصصة للمشروع
+    if "OPENAI_API_KEY" in st.secrets and st.secrets["OPENAI_API_KEY"].strip() != "":
+        client = OpenAI(page_title="ScholarNode", api_key=st.secrets["OPENAI_API_KEY"])
     else:
         client = None
 except Exception:
@@ -195,7 +196,6 @@ def render_user_services():
     st.markdown("## ✨ الخدمات الأكاديمية المتطورة")
     st.write(f"مرحباً بك، رصيدك الحالي المتاح للاستخدام هو: **{st.session_state.user_credit}** محاولة.")
     
-    # شريط رفع واحد موحد فائق السعة
     uploaded_file = st.file_uploader("📂 Upload: ارفع مستند البحث أو الملف هنا لمرة واحدة فقط لتفعيل كافة الأقسام (PDF, Word, صور):", type=["pdf", "docx", "png", "jpg", "jpeg"])
     
     sub_tabs = st.tabs([
@@ -209,40 +209,33 @@ def render_user_services():
         "💬 المستشار الذكي المفتوح"
     ])
     
-    # --- 1. تبويب معاينة ومناقشة المستند (محدث بالكامل لعرض أوراق الـ PDF الفعلية) ---
+    # --- 1. تبويب معاينة ومناقشة المستند ---
     with sub_tabs[0]:
         st.subheader("📄 معاينة ومناقشة المستند")
         if uploaded_file:
             st.success(f"✔️ المستند المرفوع حالياً والمستهدف بالعمل: {uploaded_file.name}")
-            
             col_preview, col_chat = st.columns([1, 1])
             
             with col_preview:
                 st.markdown("### 🖼️ المعاينة البصرية للمستند الحقيقي:")
                 if uploaded_file.name.lower().endswith('.pdf') and fitz:
                     try:
-                        # فتح الـ PDF من الذاكرة باستخدام PyMuPDF لقراءة الصور الحية
                         file_bytes = uploaded_file.read()
                         doc = fitz.open(stream=file_bytes, filetype="pdf")
                         total_pages = len(doc)
                         
-                        # إدارة رقم الصفحة الحالية عبر الـ session_state لمنع إعادة التعيين
                         if "pdf_page_index" not in st.session_state:
                             st.session_state.pdf_page_index = 0
                             
-                        # التأكد من عدم خروج المؤشر عن الحدود عند تغيير الملف
                         if st.session_state.pdf_page_index >= total_pages:
                             st.session_state.pdf_page_index = 0
                             
-                        # استخراج الصفحة المحددة وتحويلها إلى مصفوفة بكسل (صورة)
                         page = doc[st.session_state.pdf_page_index]
-                        pix = page.get_pixmap(dpi=150) # دقة واضحة وممتازة للقراءة
+                        pix = page.get_pixmap(dpi=150)
                         img_data = pix.tobytes("png")
                         
-                        # عرض الورقة الحقيقية داخل المنصة
                         st.image(img_data, caption=f"📄 الورقة الفعلية رقم {st.session_state.pdf_page_index + 1} من إجمالي {total_pages}", use_container_width=True)
                         
-                        # أزرار التصفح المباشر أسفل الورقة
                         col_btn1, col_btn2 = st.columns(2)
                         with col_btn1:
                             if st.button("⬅️ الصفحة السابقة", use_container_width=True) and st.session_state.pdf_page_index > 0:
@@ -253,14 +246,13 @@ def render_user_services():
                                 st.session_state.pdf_page_index += 1
                                 st.rerun()
                                 
-                        # إعادة ضبط المؤشر لكي لا يمنع عمليات التحليل لقراءة الملف من البداية عند الحاجة
                         uploaded_file.seek(0)
                     except Exception as e:
                         st.error(f"⚠️ تعذر استخراج صورة المعاينة الفورية: {str(e)}")
                 elif uploaded_file.name.lower().endswith(('.png', '.jpg', '.jpeg')):
                     st.image(uploaded_file, caption="📸 صورة المستند المرفوع", use_container_width=True)
                 else:
-                    st.info("📝 تم تحميل ملف Word بنجاح، خاصية المعاينة الصورية المباشرة مخصصة لملفات الـ PDF والصور حالياً.")
+                    st.info("📝 تم تحميل ملف Word بنجاح، خاصية المعاينة مخصصة لملفات الـ PDF والصور حالياً.")
             
             with col_chat:
                 target_lang_1 = st.selectbox("اللغة المستهدفة للنقاش والتحليل:", ["العربية", "English"], key="tl1")
@@ -282,7 +274,7 @@ def render_user_services():
                 if "chat_res" in st.session_state:
                     st.download_button("📥 تحميل نتيجة النقاش الفوري بصيغة Word", data=convert_to_word_provider(st.session_state.chat_res, rtl=True), file_name="Document_Discussion.docx")
         else:
-            st.warning("⚠️ يرجى رفع ملف البحث من شريط التحميل (Upload) العلوي أولاً لتفعيل خدمات هذا التبويب.")
+            st.warning("⚠️ يرجى رفع ملف البحث من شريط التحميل العلوي أولاً.")
 
     # --- 2. تبويب المراجعة الأكاديمية والنقدية ---
     with sub_tabs[1]:
@@ -367,21 +359,27 @@ def render_user_services():
         else:
             st.warning("⚠️ يرجى رفع الشهادة أو الوثيقة من شريط التحميل العلوي أولاً.")
 
-    # --- 5. تبويب توليد الصور والمخططات ---
+    # --- 5. تبويب توليد الصور والمخططات (محدّث ومحمي من الانهيار) ---
     with sub_tabs[4]:
         st.subheader("🎨 توليد الرسوم والمخططات والشعارات الأكاديمية")
         image_desc = st.text_area("أدخل تفاصيل ومحتوى الصورة أو المخطط المطلوب كتابته بالعربية:")
         st.caption("🎯 التكلفة الثابتة: يتم خصم 5 محاولات للطلب الواحد.")
         
         if st.button("🎨 ابدأ توليد الرسم الفني"):
-            if image_desc.strip() and deduct_attempts(5):
-                run_progress_bar()
-                if client:
-                    res = client.images.generate(model="dall-e-3", prompt=image_desc, n=1, size="1024x1024")
-                    st.session_state.generated_img_url = res.data[0].url
+            if image_desc.strip():
+                if not client:
+                    # عرض تنبيه واضح وحماية التطبيق بدلاً من الشاشة الحمراء
+                    st.error("⚠️ خطأ في الاتصال: لم يتم العثور على مفتاح ربط OpenAI (API Key) صالح في خادم الاستضافة. يرجى إضافته إلى Secrets أولاً.")
                 else:
-                    st.session_state.generated_img_url = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe"
-                st.rerun()
+                    try:
+                        if deduct_attempts(5):
+                            run_progress_bar()
+                            res = client.images.generate(model="dall-e-3", prompt=image_desc, n=1, size="1024x1024")
+                            st.session_state.generated_img_url = res.data[0].url
+                            st.rerun()
+                    except Exception as error_msg:
+                        st.error(f"❌ فشل الاتصال بالبوابة الخارجية: {str(error_msg)}")
+                        
         if "generated_img_url" in st.session_state:
             st.image(st.session_state.generated_img_url, caption="🖼️ المخطط البياني المولد من الذكاء الاصطناعي")
 
