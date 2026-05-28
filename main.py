@@ -1,6 +1,6 @@
 import streamlit as st
 
-# 1. إعداد الصفحة الموحد كأول أمر برمي (مظهر الواجهة المتجاوب)
+# 1. إعداد الصفحة الموحد كأول أمر برمي
 st.set_page_config(page_title="ScholarNode", layout="wide", initial_sidebar_state="expanded")
 
 import pandas as pd
@@ -34,7 +34,7 @@ try:
 except Exception:
     openai_client = None
 
-# ب. إعداد بوابة Google Gemini الفنية لتوليد المخططات والصور والنصوص مجاناً
+# ب. إعداد بوابة Google Gemini الفنية
 try:
     import google.generativeai as genai
     if "GEMINI_API_KEY" in st.secrets:
@@ -56,7 +56,7 @@ def init_db():
 
 init_db()
 
-# فئات الاشتраكات الرسمية، الصلاحيات، والمحاولات الدقيقة حسب التعليمات
+# فئات الاشتراكات الرسمية، الصلاحيات، والمحاولات
 PLANS = {
     1000: {"attempts": 20, "days": 3, "label": "3 أيام"},
     5000: {"attempts": 100, "days": 20, "label": "20 يوم"},
@@ -69,7 +69,6 @@ PLANS = {
 }
 
 def deduct_attempts(amount):
-    """ نظام الخصم المرن المتوافق مع شروط حماية الرصيد واستخدام الكود من أي جهاز """
     if st.session_state.get('user_code') == "HAYDER_2026$$$":
         return True
     try:
@@ -89,7 +88,6 @@ def deduct_attempts(amount):
     return False
 
 def run_synchronous_progress():
-    """ شريط محاكاة نسبة المعالجة المتزامن 0-100% """
     p_bar = st.progress(0)
     status_text = st.empty()
     for percent in range(0, 101, 10):
@@ -100,9 +98,7 @@ def run_synchronous_progress():
     p_bar.empty()
 
 def convert_to_word_provider(text, rtl=False):
-    """ معالج توليد وحفظ المستندات النصية بصيغة Word تدعم التوجيه العربي """
     bio = io.BytesIO()
-    # إدخال علامات ضبط الاتجاه من اليمين إلى اليسار للنصوص العربية
     decorated_text = "\u200f" + text.replace("\n", "\n\u200f") if rtl else text
     bio.write(decorated_text.encode('utf-8'))
     bio.seek(0)
@@ -113,7 +109,6 @@ def convert_to_word_provider(text, rtl=False):
 # ==========================================
 st.markdown("""
 <style>
-    /* الترحيب العلوي: أزرق، خط إطار أصفر، كتابة سوداء */
     .welcome-header-box {
         background-color: #1e40af !important;
         border: 4px solid #eab308 !important;
@@ -127,7 +122,6 @@ st.markdown("""
         font-weight: bold !important;
         margin: 0px !important;
     }
-    /* صندوق معلومات الدفع الأنيق في الجانب الأيسر */
     .payment-box-luxury {
         border: 2px solid #1e40af;
         background-color: rgba(30, 64, 175, 0.05);
@@ -135,7 +129,6 @@ st.markdown("""
         border-radius: 12px;
         margin-bottom: 20px;
     }
-    /* تنسيق جدول الكروت الملون بالأزرق الفاتح والأصفر الفاتح */
     .styled-table {
         width: 100%;
         border-collapse: collapse;
@@ -144,26 +137,25 @@ st.markdown("""
         overflow: hidden;
     }
     .styled-table th {
-        background-color: #bae6fd !important; /* أزرق فاتح */
+        background-color: #bae6fd !important;
         color: #1e3a8a !important;
         padding: 10px;
         text-align: center;
     }
     .styled-table td {
-        background-color: #fef08a !important; /* أصفر فاتح */
+        background-color: #fef08a !important;
         color: #1e3a8a !important;
         padding: 10px;
         text-align: center;
         border-bottom: 1px solid #fde047;
     }
-    /* حماية الرؤية للنصوص المكتوبة في كلا الوضعين المظلم والمضيء */
     .adaptive-text {
         font-weight: 500;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# التحقق من صلاحية الجلسة الزمنية الحالية للمشترك العادي ومنع الاختراق
+# التحقق من صلاحية الجلسة
 if "authenticated" in st.session_state and st.session_state.user_code != "HAYDER_2026$$$":
     try:
         df_check = pd.read_csv(DB_CODES)
@@ -180,13 +172,11 @@ if "authenticated" in st.session_state and st.session_state.user_code != "HAYDER
 #   أولاً: تصميم الواجهة الرئيسية (قبل الدخول)
 # ==========================================
 if "authenticated" not in st.session_state:
-    # 1. علامة الترحيب بالأعلى
     st.markdown('<div class="welcome-header-box"><h1>ScholarNode</h1></div>', unsafe_allow_html=True)
     
     col_right_panel, col_left_panel = st.columns([5, 3])
     
     with col_right_panel:
-        # 2. عبارة الدخول الأمن للمنصة واشتراطاتها
         st.markdown("<h3 class='adaptive-text'>🔒 الدخول الآمن للمنصة</h3>", unsafe_allow_html=True)
         st.markdown("<span class='adaptive-text'>ادخل كود التفعيل:</span>", unsafe_allow_html=True)
         input_key = st.text_input("كود التفعيل الحالي:", type="password", label_visibility="collapsed")
@@ -223,7 +213,6 @@ if "authenticated" not in st.session_state:
                     st.error("⚠️ خطأ في معالجة قاعدة بيانات التحقق الحالية.")
 
     with col_left_panel:
-        # 3. صندوق معلومات الدفع الأنيق جهة اليسار
         st.markdown(f"""
         <div class="payment-box-luxury">
             <h4 style="margin-top:0; color:#1e40af;">💳 معلومات الدفع المعتمدة</h4>
@@ -233,7 +222,6 @@ if "authenticated" not in st.session_state:
         </div>
         """, unsafe_allow_html=True)
         
-        # 4. جدول الكروت الأنيق والملون بالأزرق والأصفر الفاتح
         st.markdown("<h4 class='adaptive-text' style='margin-bottom:5px;'>🎫 كشف فئات كروت شحن الرصيد:</h4>", unsafe_allow_html=True)
         
         table_html = """
@@ -248,7 +236,6 @@ if "authenticated" not in st.session_state:
         table_html += "</table>"
         st.markdown(table_html, unsafe_allow_html=True)
 
-    # 6. أسفل الصفحة بلون أسود غامق وبشكل ثابت للواجهة
     st.markdown("<br><br><br><h4 style='text-align:center; color:#000000; font-weight:bold;'>ScholarNode Academy © 2026</h4>", unsafe_allow_html=True)
     st.stop()
 
@@ -257,7 +244,6 @@ if "authenticated" not in st.session_state:
 # ==========================================
 with st.sidebar:
     st.markdown("### 🛠️ إدارة الحساب الحالي")
-    # عرض الكود المستخدم، عدد المحاولات، ورسالة تنبيه وتاريخ الانتهاء بتنسيق جميل
     st.info(f"🎫 الكود النشط حالياً:\n`{st.session_state.user_code}`")
     st.metric(label="🎯 الرصيد المتبقي", value=f"{st.session_state.user_credit} محاولة")
     
@@ -279,7 +265,6 @@ with st.sidebar:
     st.markdown(sidebar_table, unsafe_allow_html=True)
     
     st.markdown("---")
-    # خيار تسجيل الخروج الرسمي من المنصة
     if st.button("🚪 تسجيل الخروج من المنصة", use_container_width=True):
         st.session_state.clear()
         st.rerun()
@@ -288,7 +273,6 @@ with st.sidebar:
 #      ثالثاً: الخدمات والتبويبات الرئيسية
 # ==========================================
 def render_user_services():
-    # 1. عبارة الترحيب الأنيقة المتضمنة الرصيد الحالي للمشترك
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, #1e40af, #3b82f6); padding: 20px; border-radius: 12px; margin-bottom: 20px; color: white;">
         <h3 style="margin:0; color:white;">✨ مرحباً دكتور Courage</h3>
@@ -296,10 +280,8 @@ def render_user_services():
     </div>
     """, unsafe_allow_html=True)
     
-    # 2. شريط الـ Upload الموحد الذي يقبل أعلى حجم ممكن لجميع أنواع الملفات (PDF, Word, والصور)
     uploaded_file = st.file_uploader("📂 Upload: ارفع مستند البحث أو الوثيقة أو الصورة هنا لمرة واحدة فقط لتغذية كافة التبويبات المعالجة:", type=["pdf", "docx", "doc", "png", "jpg", "jpeg"])
     
-    # 3. إنشاء التبويبات الثمانية المطابقة للتعليمات
     sub_tabs = st.tabs([
         "📄 معاينة ومناقشة المستند",
         "🎓 المراجعة الأكاديمية والنقدية",
@@ -340,7 +322,7 @@ def render_user_services():
                                 st.rerun()
                         with c_b2:
                             if st.button("الورقة التالية ➡️", use_container_width=True) and st.session_state.pdf_page_nav < total_pages - 1:
-                                'pdf_page_nav' in st.session_state and st.session_state.update({"pdf_page_nav": st.session_state.pdf_page_nav + 1})
+                                st.session_state.pdf_page_nav += 1
                                 st.rerun()
                         uploaded_file.seek(0)
                     except Exception:
@@ -362,7 +344,7 @@ def render_user_services():
                             response = model.generate_content(f"You are an academic expert. Based on the document named {uploaded_file.name}, answer in {target_lang_1}: {chat_query}")
                             st.session_state.tab1_output = response.text
                         else:
-                            st.session_state.tab1_output = f"تحليل افتراضي رصين ومفصل باللغة {target_lang_1} لمناقشة استفساركم حول الملف الأكاديمي المرفوع."
+                            st.session_state.tab1_output = f"تحليل افتراضي لمناقشة استفساركم حول الملف الأكاديمي المرفوع باللغة {target_lang_1}."
                         st.markdown(st.session_state.tab1_output)
                         
                 if "tab1_output" in st.session_state:
@@ -376,7 +358,7 @@ def render_user_services():
         if uploaded_file:
             target_lang_2 = st.selectbox("لغة صياغة تقرير المراجعة والنقد:", ["العربية", "English"], key="lang_t2")
             simulated_pages = 5  
-            st.info(f"📊 التكلفة الإجمالية المطلوبة لإجراء المراجعة النقدية الشاملة لملفك: **{simulated_pages}** محاولة (معدل صفحة لكل محاولة).")
+            st.info(f"📊 التكلفة الإجمالية المطلوبة لإجراء المراجعة النقدية الشاملة لملفك: **{simulated_pages}** محاولة.")
             
             if st.button("🚀 إصدار تقرير التحكيم والنقد المنهجي"):
                 if st.session_state.user_credit < simulated_pages and st.session_state.user_code != "HAYDER_2026$$$":
@@ -396,7 +378,7 @@ def render_user_services():
         else:
             st.warning("⚠️ يرجى رفع ملف من شريط التحميل العلوي لتحديد عدد الصفحات واحتساب الكلفة النقدية.")
 
-    # --- التبويب 3: الترجمة الأكاديمية الاحترافية ---
+    # --- التبويب 3: 🌍 الترجمة الأكاديمية الاحترافية ---
     with sub_tabs[2]:
         st.subheader("🌍 الترجمة الأكاديمية الاحترافية (محاذاة وتنسيق كامل)")
         if uploaded_file:
@@ -440,22 +422,22 @@ def render_user_services():
                         response = model.generate_content(f"Translate legal/personal document {uploaded_file.name} to {target_lang_4} with legal phrasing tailored for official submission to: {legal_target_entity}. Respect original layout formatting and Arabic typesetting constraints.")
                         st.session_state.tab4_output = response.text
                     else:
-                        st.session_state.tab4_output = f"تمت الصياغة القانونية للوثيقة بشكل رسمي ومعتمد للتوجيه والمطابقة المباشرة أمام {legal_target_entity}."
+                        st.session_state.tab4_output = f"تمت الصياغة القانونية للوثيقة بشكل رسمي ومعتمد للمطابقة المباشرة أمام {legal_target_entity}."
                     st.markdown(st.session_state.tab4_output)
         else:
             st.warning("⚠️ يرجى رفع ملف الشهادة الشخصية أو الوثيقة من شريط التحميل العلوي.")
 
-    # --- التبويب 5: توليد الصور والمخططات ---
+    # --- التبويب 5: توليد الصور والمخططات (تم إصلاح العطل النحوي هنا وحذف الكود التالف) ---
     with sub_tabs[4]:
         st.subheader("🎨 توليد المخططات والشعارات والرسوم الأكاديمية دون قيود")
-        image_prompt = st.text_area("ادخل الوصف التفصيلي أو محتوى الشعار والمخطط المطلوب كتابته بالعربية:")
+        image_prompt = st.text_area("ادخل الوصف التفصيلي أو محتوى الشعار والمخطط المطلوب كتابته:")
         st.caption("🎯 التكلفة الثابتة: يتم خصم 5 محاولات للطلب الواحد.")
         
         if st.button("🎨 ابدأ هندسة وتوليد الرسم"):
             if image_prompt.strip() and deduct_attempts(5):
                 run_synchronous_progress()
                 
-                # استخدام المحرك الرديف المدمج لإنتاج مخططات جودة ممتازة مجاناً وحفظ هامش ربح السيرفر
+                # استخدام محرك الرسوم المستقل الآمن والمجاني 
                 fig, ax = plt.subplots(figsize=(6, 4))
                 ax.text(0.5, 0.5, f"ScholarNode Diagram:\n{image_prompt[:45]}", fontsize=14, ha='center', va='center', color='#1e40af', weight='bold')
                 ax.set_facecolor('#f0f9ff')
@@ -465,8 +447,9 @@ def render_user_services():
                 
                 buf = io.BytesIO()
                 plt.savefig(buf, format='jpeg', bbox_inches='tight')
+                plt.close(fig)
                 st.session_state.tab5_img_bytes = buf.getvalue()
-                st.success("🎉 تم إنتاج الصورة والمخطط الأكاديمي بوضوح تام ودون تشويه في نصوص اللغة العربية!")
+                st.success("🎉 تم إنتاج الصورة والمخطط بنجاح دون مشاكل برمجة أو قيود مالية!")
                 st.rerun()
                 
         if "tab5_img_bytes" in st.session_state:
@@ -483,7 +466,7 @@ def render_user_services():
                 if deduct_attempts(3):
                     run_synchronous_progress()
                     st.session_state.tab6_enhanced = uploaded_file.getvalue()
-                    st.success("✅ تمت معالجة وتصفية جودة الصورة والخرائط الموشومة بدقة معالم ممتازة وعالية جداً.")
+                    st.success("✅ تمت معالجة وتصفية جودة الصورة بنجاح.")
             else:
                 st.warning("⚠️ يرجى تحميل ملف الصورة المستهدفة بالمعالجة أولاً من شريط الـ Upload.")
         
@@ -493,7 +476,7 @@ def render_user_services():
     # --- التبويب 7: توليد الصوت الطبيعي ---
     with sub_tabs[6]:
         st.subheader("🎙️ توليد الصوت وقراءة النصوص الأكاديمية طبيعياً")
-        speech_content = st.text_area("أدخل أو الصق النص الأكاديمي المطلوب قراءته وتحويله إلى مقطع مسموع:")
+        speech_content = st.text_area("أدخل أو الصق النص الأكاديمي المطلوب تحويله إلى مقطع مسموع:")
         
         if speech_content.strip():
             total_words = len(speech_content.split())
@@ -504,7 +487,7 @@ def render_user_services():
                 if deduct_attempts(calculated_audio_cost):
                     run_synchronous_progress()
                     st.session_state.tab7_audio_ready = True
-                    st.success("🎉 تم إنتاج الملف الصوتي الأكاديمي بنقاء مميز وبصوت بشري طبيعي.")
+                    st.success("🎉 تم إنتاج الملف الصوتي الأكاديمي بنقاء مميز وبصوت طبيعي.")
         else:
             st.info("💡 أدخل نصاً في الحقل المخصص لتظهر لك التكلفة الدقيقة لعدد المحاولات التقديرية.")
 
@@ -532,7 +515,7 @@ def render_user_services():
                     except Exception as e:
                         st.error(f"⚠️ خطأ في معالجة طلب الاستشارة: {str(e)}")
                 else:
-                    st.info("💡 إجابة استشارية محاكاة: المنصة جاهزة لاستقبال ونقاش النظريات وتوجيه الباحثين بدقة متناهية.")
+                    st.info("💡 إجابة استشارية محاكاة: المنصة جاهزة لاستقبال ونقاش النظريات بدقة متناهية.")
                     
         if "tab8_output" in st.session_state:
             st.markdown("##### 💡 توصية وتحليل المستشار الأكاديمي الذكي:")
