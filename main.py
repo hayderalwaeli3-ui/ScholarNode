@@ -18,7 +18,7 @@ except Exception:
     fitz = None
 
 # ==========================================
-#   إعداد بوابة الاتصال بـ Google Gemini
+#   إعداد بوابة الاتصال بـ Google Gemini فقط
 # ==========================================
 try:
     import google.generativeai as genai
@@ -90,7 +90,7 @@ def convert_to_word_provider(text, rtl=False):
     return bio
 
 # ==========================================
-#     هندسة المظهر وتنسيقات الواجهة
+#     هندسة المظهر (وضع الرؤية المزدوج)
 # ==========================================
 st.markdown("""
 <style>
@@ -294,7 +294,7 @@ def render_user_services():
                     if chat_query.strip() and deduct_attempts(1):
                         run_synchronous_progress()
                         if gemini_available:
-                            model = genai.GenerativeModel("gemini-pro")
+                            model = genai.GenerativeModel("gemini-1.5-flash")
                             response = model.generate_content(f"Based on document {uploaded_file.name}, answer in {target_lang_1}: {chat_query}")
                             st.session_state.tab1_output = response.text
                         else:
@@ -310,7 +310,7 @@ def render_user_services():
                 if deduct_attempts(5):
                     run_synchronous_progress()
                     if gemini_available:
-                        model = genai.GenerativeModel("gemini-pro")
+                        model = genai.GenerativeModel("gemini-1.5-flash")
                         response = model.generate_content(f"Provide an intensive professional academic peer-review critique for the paper {uploaded_file.name} and output in {target_lang_2}.")
                         st.session_state.tab2_output = response.text
                     else:
@@ -326,7 +326,7 @@ def render_user_services():
                 if deduct_attempts(6):
                     run_synchronous_progress()
                     if gemini_available:
-                        model = genai.GenerativeModel("gemini-pro")
+                        model = genai.GenerativeModel("gemini-1.5-flash")
                         response = model.generate_content(f"Translate document {uploaded_file.name} to {target_lang_3} with strict academic style.")
                         st.session_state.tab3_output = response.text
                     else:
@@ -343,14 +343,14 @@ def render_user_services():
                 if deduct_attempts(2):
                     run_synchronous_progress()
                     if gemini_available:
-                        model = genai.GenerativeModel("gemini-pro")
+                        model = genai.GenerativeModel("gemini-1.5-flash")
                         response = model.generate_content(f"Translate legal document {uploaded_file.name} to {target_lang_4} officially for {legal_target_entity}.")
                         st.session_state.tab4_output = response.text
                     else:
                         st.session_state.tab4_output = "الخدمة تتطلب كود اتصال جيفني نشط."
                     st.markdown(st.session_state.tab4_output)
 
-    # --- التبويب 5: صياغة وهندسة المخططات الهيكلية (تصحيح الأمان هنا) ---
+    # --- التبويب 5: توليد الصور والمخططات الأكاديمية (آمن ومجاني 100%) ---
     with sub_tabs[4]:
         st.subheader("🎨 صياغة وهندسة المخططات الهيكلية والأكاديمية")
         image_prompt = st.text_area("ادخل عناصر المخطط العلمي أو الهيكلي المطلوب توصيفه وتدقيقه لغوياً:")
@@ -358,12 +358,12 @@ def render_user_services():
             if image_prompt.strip() and deduct_attempts(2):
                 run_synchronous_progress()
                 if gemini_available:
-                    model = genai.GenerativeModel("gemini-pro")
-                    response = model.generate_content(f"Act as an expert academic designer and global policy analyst. Elaborate and format a highly detailed academic structural outline based on this description for presentation slides: {image_prompt}")
+                    model = genai.GenerativeModel("gemini-1.5-flash")
+                    response = model.generate_content(f"Act as an expert academic designer. Elaborate and format a structural outline based on this description for presentation slides: {image_prompt}")
                     st.info("💡 تم صياغة وتوليد الهيكل النصي المصفف للمخطط بنجاح وبشكل مجاني:")
                     st.write(response.text)
                 else:
-                    st.error("⚠️ عذراً دكتور، يرجى التأكد من إضافة مفتاح GEMINI_API_KEY بشكل صحيح داخل ملف الـ Secrets الخاص بـ Streamlit لتفعيل الميزة.")
+                    st.error("محرك جيفني غير متاح حالياً.")
 
     # --- التبويب 6: توضيح الصورة بدقة عالية ---
     with sub_tabs[5]:
@@ -382,7 +382,7 @@ def render_user_services():
                 run_synchronous_progress()
                 st.success("🎉 تم معالجة المقطع وجاري تشغيل القارئ الآلي الطبيعي الافتراضي.")
 
-    # --- التبويب 8: المستشار الذكي ---
+    # --- التبويب 8: المستشار الذكي (يعمل بواسطة Gemini مجاناً وبثبات) ---
     with sub_tabs[7]:
         st.subheader("💬 المستشار الأكاديمي والمنهجي المفتوح")
         advisor_query = st.text_area("اطرح أي سؤال علمي أو منهجي يخص أطروحتك أو أبحاثك الدقيقة:")
@@ -390,7 +390,7 @@ def render_user_services():
             if advisor_query.strip() and deduct_attempts(1):
                 run_synchronous_progress()
                 if gemini_available:
-                    model = genai.GenerativeModel("gemini-pro")
+                    model = genai.GenerativeModel("gemini-1.5-flash")
                     response = model.generate_content(advisor_query)
                     st.session_state.tab8_output = response.text
                 else:
