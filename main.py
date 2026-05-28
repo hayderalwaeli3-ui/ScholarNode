@@ -278,19 +278,24 @@ def render_user_services():
                     if chat_query and deduct_attempts(1):
                         run_progress_bar()
                         if client:
-                            res = client.chat.completions.create(
-                                model="gpt-4o-mini",
-                                messages=[{"role": "user", "content": f"Analyze {uploaded_file.name} and answer in {target_lang_1}: {chat_query}"}]
-                            )
-                            st.session_state.chat_res = res.choices[0].message.content
+                            try:
+                                res = client.chat.completions.create(
+                                    model="gpt-4o-mini",
+                                    messages=[{"role": "user", "content": f"Analyze {uploaded_file.name} and answer in {target_lang_1}: {chat_query}"}]
+                                )
+                                st.session_state.chat_res = res.choices[0].message.content
+                            except Exception as e:
+                                st.error(f"حدث خطأ أثناء الاتصال بـ OpenAI: {e}")
                         else:
-                            st.session_state.chat_res = f"إجابة ذكية ومحاكاة دقيقة للملف {uploaded_file.name} حول: {chat_query}"
-                        st.write(st.session_state.chat_res)
-                
+                            st.error("مفتاح OpenAI API غير مهيأ. يرجى التأكد من إعدادات Secrets.")
+                    else:
+                        st.warning("يرجى التأكد من كتابة استفسار وتوفر الرصيد الكافي.")
+
                 if "chat_res" in st.session_state:
+                    st.write(st.session_state.chat_res)
                     st.download_button("📥 تحميل نتيجة النقاش الفوري بصيغة Word", data=convert_to_word_provider(st.session_state.chat_res, rtl=True), file_name="Document_Discussion.docx")
-        else:
-            st.warning("⚠️ يرجى رفع ملف البحث من شريط التحميل العلوي أولاً.")
+                else:
+                    st.warning("⚠️ يرجى رفع ملف والبدء بالتحليل أولاً.")
 
     # --- 2. تبويب المراجعة الأكاديمية والنقدية ---
     with sub_tabs[1]:
