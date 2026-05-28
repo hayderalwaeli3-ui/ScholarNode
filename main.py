@@ -8,10 +8,14 @@ from datetime import datetime, timedelta
 from google import genai
 from google.genai import types
 
-# 1. إعداد الصفحة
-st.set_page_config(page_title="ScholarNode Academy", layout="wide")
+# 1. إعداد الصفحة - يجب أن يكون أول أمر
+st.set_page_config(page_title="ScholarNode", layout="wide")
 
-# محرك Gemini المدمج (للاتصال الذكي)
+# 2. تهيئة الجلسة لمنع خطأ AttributeError
+if "authenticated" not in st.session_state:
+    st.session_state.update({"authenticated": False, "user_code": "", "is_admin": False})
+
+# 3. محرك Gemini الحديث
 def get_gemini_response(prompt):
     try:
         client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
@@ -21,70 +25,50 @@ def get_gemini_response(prompt):
         )
         return response.text
     except Exception as e:
-        return f"⚠️ خطأ في الاتصال: {str(e)}"
+        return f"⚠️ خطأ في المعالجة: {str(e)}"
 
-# إدارة قاعدة البيانات والسياسة المالية
-DB_FILE = "scholarnode_data.csv"
-def init_db():
-    if not os.path.exists(DB_FILE):
-        df = pd.DataFrame(columns=["code", "remaining", "expiry_date", "plan_type"])
-        df.to_csv(DB_FILE, index=False)
-init_db()
-
-# تنسيق CSS الأنيق
+# 4. التنسيقات (CSS)
 st.markdown("""
 <style>
-    .welcome-box { background-color: #1e40af; border: 4px solid #eab308; padding: 20px; border-radius: 15px; text-align: center; color: #000; }
-    .payment-box { border: 2px solid #1e40af; padding: 15px; border-radius: 10px; background-color: #f8fafc; }
-    .stTable { background-color: #fef08a; }
+    .welcome-header-box { background-color: #1e40af; border: 4px solid #eab308; padding: 22px; text-align: center; border-radius: 14px; margin-bottom: 30px; color: #000; }
+    .payment-box-luxury { border: 2px solid #1e40af; background-color: #f8fafc; padding: 18px; border-radius: 12px; }
+    .styled-table { width: 100%; border-collapse: collapse; background-color: #fef08a; color: #1e3a8a; }
+    .styled-table th { background-color: #bae6fd; padding: 10px; }
+    .styled-table td { padding: 10px; border-bottom: 1px solid #fde047; }
 </style>
 """, unsafe_allow_html=True)
 
-# منطق الدخول
-if "authenticated" not in st.session_state:
-    st.markdown('<div class="welcome-box"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
-    
+# 5. منطق الدخول الآمن
+if not st.session_state.authenticated:
+    st.markdown('<div class="welcome-header-box"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
     col1, col2 = st.columns([2, 1])
     with col1:
         st.subheader("🔒 الدخول الآمن للمنصة")
-        code = st.text_input("ادخل كود التفعيل:")
+        input_code = st.text_input("ادخل كود التفعيل:", type="password")
         if st.button("دخول المنصة"):
-            if code == "HAYDER_2026$$$":
-                st.session_state.update({"auth": True, "admin": True, "code": code})
+            if input_code == "HAYDER_2026$$$":
+                st.session_state.update({"authenticated": True, "user_code": input_code, "is_admin": True})
                 st.rerun()
             else:
-                # [إضافة منطق التحقق من CSV هنا]
-                st.error("كود غير صالح")
-    
+                # هنا يتم التحقق من قاعدة البيانات لاحقاً
+                st.error("كود غير صحيح")
     with col2:
-        st.markdown('<div class="payment-box"><b>معلومات الدفع:</b><br>الرافدين: 8369719342<br>HAYDER Z. JASIM</div>', unsafe_allow_html=True)
+        st.markdown('<div class="payment-box-luxury"><b>معلومات الدفع:</b><br>ماستر كارد الرافدين: 8369719342<br>HAYDER Z. JASIM<br>هاتف: 07879974395</div>', unsafe_allow_html=True)
     st.stop()
 
-# الواجهة بعد الدخول
-st.sidebar.markdown(f"**الكود:** {st.session_state.code}")
+# 6. الواجهة بعد الدخول
+st.sidebar.markdown(f"**🎫 الكود الحالي:** `{st.session_state.user_code}`")
 if st.sidebar.button("تسجيل الخروج"):
     st.session_state.clear()
     st.rerun()
 
-# التبويبات (مثال للتبويب الأول)
+# 7. التبويبات والخدمات
 tabs = st.tabs(["📄 معاينة", "🎓 مراجعة", "🌍 ترجمة", "⚖️ قانونية", "🎨 صور", "🔍 توضيح", "🎙️ صوت", "💬 مستشار"])
 
 with tabs[0]:
     st.subheader("📄 معاينة ومناقشة المستند")
-    uploaded_file = st.file_uploader("Upload", type=["pdf", "docx", "jpg", "png"])
-    if uploaded_file and st.button("بدء المعالجة"):
-        with st.spinner("جاري المعالجة..."):
-            progress = st.progress(0)
-            for i in range(100):
-                time.sleep(0.02)
-                progress.progress(i+1)
-            st.markdown(get_gemini_response("تحليل المستند المرفوع..."))
-
-# لوحة الإدارة
-if st.session_state.get("admin"):
-    st.sidebar.markdown("---")
-    st.subheader("🛠️ لوحة الإدارة")
-    admin_tabs = st.tabs(["الواجهة", "توليد كودات", "الكودات المفعلة"])
-    # [إضافة منطق توليد الأكواد]
+    # منطق التبويب هنا
+    if st.button("بدء التحليل"):
+        st.markdown(get_gemini_response("قم بتحليل المستند."))
 
 st.markdown("<center>ScholarNode Academy © 2026</center>", unsafe_allow_html=True)
