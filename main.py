@@ -8,6 +8,7 @@ import io
 import random
 import string
 import fitz  # لقراءة ملفات الـ PDF حقيقياً عبر PyMuPDF
+import requests  # تم إضافته لجلب تفاصيل وبايتات الصور الحقيقية من السيرفر
 
 # --- 1. إعدادات الصفحة الأساسية ---
 st.set_page_config(
@@ -28,7 +29,7 @@ def initialize_database():
 
 initialize_database()
 
-# --- 3. تعريف بيانات باقات الكروت والجدول العام (ثابتة عالمياً لمنع أي NameError) ---
+# --- 3. تعريف بيانات باقات الكروت والجدول العام ---
 PLANS = {
     "1000": {"attempts": 20, "days": 3, "label": "3 أيام"},
     "5000": {"attempts": 100, "days": 20, "label": "20 يوم"},
@@ -325,9 +326,8 @@ else:
                                 st.download_button("📥 تحميل النتيجة بصيغة Word", data=create_word_file(output_text, rtl=(target_lang=="العربية")), file_name="discussion_result.docx")
                             except Exception as e:
                                 st.error(f"🚨 خطأ في الاتصال بـ OpenAI: {e}")
-                                st.warning("⚠️ يرجى التأكد من صحة صلاحية مفتاح الـ API داخل إعدادات Secrets في لوحة التحكم.")
                         else:
-                            st.error("⚠️ لم يتم ضبط مفتاح OpenAI API بالشكل الصحيح في ملف الـ Secrets.")
+                            st.error("⚠️ لم يتم ضبط مفتاح OpenAI API في ملف Secrets.")
                     elif status == "EXPIRED":
                         st.error("❌ عذراً، هذا الاشتراك منتهي الصلاحية تاريخياً.")
                     else:
@@ -422,7 +422,7 @@ else:
                 else:
                     st.warning("يرجى رفع ملف أولاً.")
 
-        # 5. تبويب توليد الصور
+        # 5. تبويب توليد الصور (تم التعديل والإصلاح الجذري هنا للربط بـ DALL-E 3)
         with tab5:
             st.header("🖼️ توليد الصور والمخططات الأكاديمية")
             st.info("💡 تكلفة توليد الصورة أو المخطط الواحد هي 5 محاولات من رصيدك.")
@@ -432,12 +432,40 @@ else:
                     status = deduct_attempts(5)
                     if status == True:
                         run_progress()
-                        st.success("🎉 تم توليد الصورة بنجاح!")
-                        st.download_button("📥 تحميل الصورة بصيغة JPEG", data=b"fake_image_bytes", file_name="generated_image.jpg", mime="image/jpeg")
+                        if openai_client:
+                            try:
+                                # استدعاء محرك توليد الصور DALL-E 3 الاحترافي
+                                with st.spinner("جاري رسم وتوليد الصورة بدقة عالية..."):
+                                    response = openai_client.images.generate(
+                                        model="dall-e-3",
+                                        prompt=image_prompt,
+                                        size="1024x1024",
+                                        quality="standard",
+                                        n=1,
+                                    )
+                                    image_url = response.data[0].url
+                                    
+                                    # عرض الصورة المتولدة مباشرة على شاشة المستخدم للمعاينة
+                                    st.image(image_url, caption="🎨 المخطط / الصورة الناتجة من الذكاء الاصطناعي")
+                                    
+                                    # جلب بايتات الصورة الحقيقية من الرابط لتمكين زر التحميل الفعلي
+                                    real_image_bytes = requests.get(image_url).content
+                                    
+                                    st.success("🎉 تم توليد الصورة بنجاح وتوفير ملف التحميل!")
+                                    st.download_button(
+                                        label="📥 تحميل الصورة الآن بدقة PNG الأصلية", 
+                                        data=real_image_bytes, 
+                                        file_name="generated_academic_image.png", 
+                                        mime="image/png"
+                                    )
+                            except Exception as e:
+                                st.error(f"🚨 خطأ أثناء توليد الصورة من OpenAI: {e}")
+                        else:
+                            st.error("⚠️ المحرك غير متاح أو لم يتم تكوين مفتاح الـ API بشكل صحيح في الـ Secrets.")
                     elif status == "EXPIRED":
-                        st.error("❌ اشتراكك منتهي الصلاحية.")
+                        st.error("❌ عذراً، اشتراكك منتهي الصلاحية التاريخية.")
                     else:
-                        st.error("⚠️ عذراً، رصيدك غير كافٍ (تحتاج 5 محاولات).")
+                        st.error("⚠️ عذراً، رصيدك غير كافٍ لتوليد صورة (تحتاج 5 محاولات).")
                 else:
                     st.warning("يرجى كتابة وصف الصورة أولاً.")
 
