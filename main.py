@@ -19,6 +19,14 @@ try:
     import google.generativeai as genai
 except ImportError:
     genai = None
+def get_gemini_gateway(user_query):
+    try:
+        genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(user_query)
+        return response.text
+    except Exception as e:
+        return f"Error: {e}"
 
 # --- 1. إعدادات وتصميم الصفحة ---
 st.set_page_config(
