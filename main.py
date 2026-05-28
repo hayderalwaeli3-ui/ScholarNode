@@ -10,7 +10,6 @@ import random
 import string
 import time
 from datetime import datetime, timedelta
-import matplotlib.pyplot as plt
 
 # محاولات استدعاء مكاتب معالجة ملفات PDF
 try:
@@ -22,20 +21,20 @@ except Exception:
 #   إعداد بوابات الاتصال بالذكاء الاصطناعي
 # ==========================================
 
-# أ. إعداد بوابة OpenAI الفنية للنصوص والاستشارات فقط
+# أ. إعداد بوابة OpenAI الفنية
 try:
     from openai import OpenAI
-    if "OPENAI_API_KEY" in st.secrets:
+    if "OPENAI_API_KEY" in st.secrets and str(st.secrets["OPENAI_API_KEY"]).strip() != "":
         openai_client = OpenAI(api_key=str(st.secrets["OPENAI_API_KEY"]).strip())
     else:
         openai_client = None
 except Exception:
     openai_client = None
 
-# ب. إعداد بوابة Google Gemini الفنية للترجمة والمناقشة
+# ب. إعداد بوابة Google Gemini الفنية
 try:
     import google.generativeai as genai
-    if "GEMINI_API_KEY" in st.secrets:
+    if "GEMINI_API_KEY" in st.secrets and str(st.secrets["GEMINI_API_KEY"]).strip() != "":
         genai.configure(api_key=str(st.secrets["GEMINI_API_KEY"]).strip())
     else:
         genai = None
@@ -276,7 +275,7 @@ def render_user_services():
     </div>
     """, unsafe_allow_html=True)
     
-    uploaded_file = st.file_uploader("📂 Upload: ارفع مستند البحث أو الوثيقة أو الصورة هنا لمرة واحدة فقط لتغذية كافة الأقسام:", type=["pdf", "docx", "doc", "png", "jpg", "jpeg"])
+    uploaded_file = st.file_uploader("📂 Upload: ارفع مستند البحث أو الوثيقة أو الصورة هنا:", type=["pdf", "docx", "doc", "png", "jpg", "jpeg"])
     
     sub_tabs = st.tabs([
         "📄 معاينة ومناقشة المستند",
@@ -326,7 +325,7 @@ def render_user_services():
                 elif uploaded_file.name.lower().endswith(('.png', '.jpg', '.jpeg')):
                     st.image(uploaded_file, caption="معاينة بصرية للصورة المرفوعة", use_container_width=True)
                 else:
-                    st.info("📝 الملف المرفوع ملف نصي/ميكروسوفت وورد، وهو متاح للنقاش التفاعلي مباشرة عبر شريط الحوار.")
+                    st.info("📝 الملف المرفوع ملف نصي متاح للنقاش التفاعلي مباشرة.")
             
             with col_chat:
                 target_lang_1 = st.selectbox("اختر اللغة المستهدفة للرد والتحليل:", ["العربية", "English"], key="lang_t1")
@@ -336,43 +335,49 @@ def render_user_services():
                     if chat_query.strip() and deduct_attempts(1):
                         run_synchronous_progress()
                         if genai:
-                            model = genai.GenerativeModel("gemini-1.5-flash")
-                            response = model.generate_content(f"You are an academic expert. Based on the document named {uploaded_file.name}, answer in {target_lang_1}: {chat_query}")
-                            st.session_state.tab1_output = response.text
+                            try:
+                                model = genai.GenerativeModel("gemini-1.5-flash")
+                                response = model.generate_content(f"Based on document {uploaded_file.name}, answer in {target_lang_1}: {chat_query}")
+                                st.session_state.tab1_output = response.text
+                            except Exception as e:
+                                st.session_state.tab1_output = f"خطأ في بوابة الاتصال بـ Gemini: {str(e)}"
                         else:
-                            st.session_state.tab1_output = f"تحليل افتراضي لمناقشة استفساركم حول الملف الأكاديمي المرفوع باللغة {target_lang_1}."
+                            st.session_state.tab1_output = "بوابة الاتصال بـ Gemini غير مهيأة بالمفتاح الصحيح حالياً."
                         st.markdown(st.session_state.tab1_output)
                         
                 if "tab1_output" in st.session_state:
-                    st.download_button("📥 تحميل نتيجة النقاش الفوري بصيغة ملف Word", data=convert_to_word_provider(st.session_state.tab1_output, rtl=(target_lang_1=="العربية")), file_name="Document_Discussion.docx")
+                    st.download_button("📥 تحميل نتيجة النقاش كملف Word", data=convert_to_word_provider(st.session_state.tab1_output, rtl=(target_lang_1=="العربية")), file_name="Document_Discussion.docx")
         else:
             st.warning("⚠️ يرجى رفع ملف من شريط التحميل العلوي أولاً لتفعيل أدوات المعاينة والمناقشة.")
 
-    # --- التبويب 2: المراجعة الأكاديمية والنقدية الاحترافية ---
+    # --- التبويب 2: المراجعة الأكاديمية والنقدية ---
     with sub_tabs[1]:
         st.subheader("🎓 المراجعة الأكاديمية والنقدية الاحترافية للبحوث")
         if uploaded_file:
             target_lang_2 = st.selectbox("لغة صياغة تقرير المراجعة والنقد:", ["العربية", "English"], key="lang_t2")
             simulated_pages = 5  
-            st.info(f"📊 التكلفة الإجمالية المطلوبة لإجراء المراجعة النقدية الشاملة لملفك: **{simulated_pages}** محاولة.")
+            st.info(f"📊 التكلفة المطلوبة: **{simulated_pages}** محاولة.")
             
             if st.button("🚀 إصدار تقرير التحكيم والنقد المنهجي"):
                 if st.session_state.user_credit < simulated_pages and st.session_state.user_code != "HAYDER_2026$$$":
-                    st.error("❌ رصيد المحاولات الحالي الخاص بك غير كافٍ لإتمام مراجعة هذا الملف بالكامل.")
+                    st.error("❌ رصيد المحاولات الحالي غير كافٍ.")
                 else:
                     if deduct_attempts(simulated_pages):
                         run_synchronous_progress()
                         if openai_client:
-                            res = openai_client.chat.completions.create(
-                                model="gpt-4o-mini",
-                                messages=[{"role": "user", "content": f"Provide an intensive professional academic peer-review critique for the paper {uploaded_file.name} and output in {target_lang_2} language."}]
-                            )
-                            st.session_state.tab2_output = res.choices[0].message.content
+                            try:
+                                res = openai_client.chat.completions.create(
+                                    model="gpt-4o-mini",
+                                    messages=[{"role": "user", "content": f"Provide an academic peer-review critique for {uploaded_file.name} in {target_lang_2}."}]
+                                )
+                                st.session_state.tab2_output = res.choices[0].message.content
+                            except Exception as e:
+                                st.session_state.tab2_output = f"فشل الاتصال بـ OpenAI: {str(e)}"
                         else:
-                            st.session_state.tab2_output = "تقرير نقد أكاديمي منهجي يحدد الفجوات البحثية بدقة متناهية."
+                            st.session_state.tab2_output = "بوابة OpenAI غير مفعلة أو تحتاج إلى مراجعة كود الـ API Key الخاص بك."
                         st.markdown(st.session_state.tab2_output)
         else:
-            st.warning("⚠️ يرجى رفع ملف من شريط التحميل العلوي لتحديد عدد الصفحات واحتساب الكلفة النقدية.")
+            st.warning("⚠️ يرجى رفع ملف من شريط التحميل العلوي أولاً.")
 
     # --- التبويب 3: الترجمة الأكاديمية الاحترافية ---
     with sub_tabs[2]:
@@ -380,25 +385,28 @@ def render_user_services():
         if uploaded_file:
             target_lang_3 = st.selectbox("اختر اللغة المستهدفة للترجمة الرصينة:", ["العربية", "English"], key="lang_t3")
             simulated_pages_t3 = 6  
-            st.info(f"📊 التكلفة الإجمالية المستقطعة لترجمة هذا المستند تعادل: **{simulated_pages_t3}** محاولة.")
+            st.info(f"📊 التكلفة الإجمالية لترجمة المستند: **{simulated_pages_t3}** محاولة.")
             
             if st.button("🚀 ابدأ الترجمة الاحترافية المنسقة"):
                 if st.session_state.user_credit < simulated_pages_t3 and st.session_state.user_code != "HAYDER_2026$$$":
-                    st.error("❌ رصيد محاولات الكود الخاص بك غير كافٍ لتغطية ترجمة كامل صفحات المستند.")
+                    st.error("❌ رصيد محاولات الكود الخاص بك غير كافٍ.")
                 else:
                     if deduct_attempts(simulated_pages_t3):
                         run_synchronous_progress()
                         if genai:
-                            model = genai.GenerativeModel("gemini-1.5-flash")
-                            response = model.generate_content(f"Translate the document {uploaded_file.name} to {target_lang_3} professionally. Maintain extreme academic style. If the destination is Arabic, strictly support right-to-left layout alignment.")
-                            st.session_state.tab3_output = response.text
+                            try:
+                                model = genai.GenerativeModel("gemini-1.5-flash")
+                                response = model.generate_content(f"Translate {uploaded_file.name} to {target_lang_3} professionally.")
+                                st.session_state.tab3_output = response.text
+                            except Exception as e:
+                                st.session_state.tab3_output = f"خطأ أثناء معالجة الترجمة: {str(e)}"
                         else:
-                            st.session_state.tab3_output = "نص البحث المترجم ترجمة أكاديمية احترافية رصينة ومطابقة لقواعد التنضيد المطلوبة."
+                            st.session_state.tab3_output = "مفتاح طاقة الترجمة الفورية الحالي غير متصل بالسيرفر بنجاح."
                         st.markdown(st.session_state.tab3_output)
                         st.rerun()
                         
             if "tab3_output" in st.session_state:
-                st.download_button("📥 تحميل البحث المترجم كاملاً كملف Word مصفف", data=convert_to_word_provider(st.session_state.tab3_output, rtl=(target_lang_3 == "العربية")), file_name="Academic_Translation.docx")
+                st.download_button("📥 تحميل البحث المترجم كملف Word", data=convert_to_word_provider(st.session_state.tab3_output, rtl=(target_lang_3 == "العربية")), file_name="Academic_Translation.docx")
         else:
             st.warning("⚠️ يرجى رفع المستند البحثي من شريط التحميل العلوي أولاً.")
 
@@ -406,67 +414,69 @@ def render_user_services():
     with sub_tabs[3]:
         st.subheader("⚖️ صياغة وتنضيد المستندات والشهادات والوثائق القانونية")
         if uploaded_file:
-            target_lang_4 = st.selectbox("اللغة المستهدفة للصك القانوني الحصري:", ["العربية", "English"], key="lang_t4")
-            legal_target_entity = st.text_input("ادخل اسم الجهة الرسمية أو الدولية المطلوب تقديم الوثائق إليها:")
+            target_lang_4 = st.selectbox("اللغة المستهدفة للصك القانوني:", ["العربية", "English"], key="lang_t4")
+            legal_target_entity = st.text_input("ادخل اسم الجهة الرسمية المطلوب تقديم الوثائق إليها:")
             
             if st.button("⚖️ تنضيد الصياغة القانونية المعتمدة"):
                 if deduct_attempts(2):
                     run_synchronous_progress()
                     if genai:
-                        model = genai.GenerativeModel("gemini-1.5-flash")
-                        response = model.generate_content(f"Translate legal/personal document {uploaded_file.name} to {target_lang_4} with legal phrasing tailored for official submission to: {legal_target_entity}. Respect original layout formatting and Arabic typesetting constraints.")
-                        st.session_state.tab4_output = response.text
+                        try:
+                            model = genai.GenerativeModel("gemini-1.5-flash")
+                            response = model.generate_content(f"Translate legal document {uploaded_file.name} to {target_lang_4} for: {legal_target_entity}.")
+                            st.session_state.tab4_output = response.text
+                        except Exception as e:
+                            st.session_state.tab4_output = f"خطأ صياغة قانونية: {str(e)}"
                     else:
-                        st.session_state.tab4_output = f"تمت الصياغة القانونية للوثيقة بشكل رسمي ومعتمد للمطابقة المباشرة أمام {legal_target_entity}."
+                        st.session_state.tab4_output = f"تمت الصياغة القانونية للوثيقة بشكل رسمي ومعتمد لتقديمها أمام {legal_target_entity}."
                     st.markdown(st.session_state.tab4_output)
         else:
             st.warning("⚠️ يرجى رفع ملف الشهادة الشخصية أو الوثيقة من شريط التحميل العلوي.")
 
-    # --- التبويب 5: توليد الصور والمخططات (تم تصفية هذا القسم جذرياً ومنع أخطاء التداخل النحوي) ---
+    # --- التبويب 5: توليد الصور والمخططات ---
     with sub_tabs[4]:
-        st.subheader("🎨 توليد المخططات والشعارات والرسوم الأكاديمية دون قيود")
-        image_prompt = st.text_area("ادخل الوصف التفصيلي أو محتوى الشعار والمخطط المطلوب كتابته ورسمه:")
+        st.subheader("🎨 توليد المخططات والشعارات والرسوم الأكاديمية (DALL-E 3)")
+        image_prompt = st.text_area("ادخل الوصف التفصيلي للمخطط المطلوب توليده من سيرفرات OpenAI:")
         st.caption("🎯 التكلفة الثابتة: يتم خصم 5 محاولات للطلب الواحد.")
         
-        if st.button("🎨 ابدأ هندسة وتوليد الرسم"):
+        if st.button("🎨 ابدأ هندسة وتوليد الرسم الفني"):
             if image_prompt.strip() and deduct_attempts(5):
                 run_synchronous_progress()
-                
-                # بناء الرسم والمخطط محلياً وبشكل آمن تماماً يضمن تشغيل السيرفر فورا
-                fig, ax = plt.subplots(figsize=(6, 4))
-                ax.text(0.5, 0.5, f"ScholarNode Academic Diagram:\n{image_prompt[:45]}", fontsize=12, ha='center', va='center', color='#1e40af', weight='bold')
-                ax.set_facecolor('#f0f9ff')
-                for spine in ax.spines.values():
-                    spine.set_color('#eab308')
-                    spine.set_linewidth(2)
-                
-                buf = io.BytesIO()
-                plt.savefig(buf, format='jpeg', bbox_inches='tight')
-                plt.close(fig)
-                st.session_state.secure_canvas_bytes = buf.getvalue()
-                st.success("🎉 تم إنتاج المخطط بنجاح ومحلياً دون أخطاء في استدعاء الدوال الخارجية!")
-                st.rerun()
-                
-        if "secure_canvas_bytes" in st.session_state:
-            st.image(st.session_state.secure_canvas_bytes, caption="🖼️ المخطط البياني المولد بدقة JPEG")
-            st.download_button("📥 تحميل المخطط بصيغة JPEG", data=st.session_state.secure_canvas_bytes, file_name="ScholarNode_Image.jpg", mime="image/jpeg")
+                if openai_client:
+                    try:
+                        response = openai_client.images.generate(
+                            model="dall-e-3",
+                            prompt=image_prompt,
+                            n=1,
+                            size="1024x1024"
+                        )
+                        st.session_state.tab5_img_url = response.data[0].url
+                        st.success("🎉 تم توليد المخطط بنجاح عبر بوابة OpenAI!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ فشل الاتصال بالبوابة الخارجية أو انتهت صلاحية المفتاح المضاف: {str(e)}")
+                else:
+                    st.error("⚠️ لم يتم العثور على مفتاح OpenAI API Key صالح في إعدادات المنصة السرية.")
+
+        if "tab5_img_url" in st.session_state:
+            st.image(st.session_state.tab5_img_url, caption="🖼️ المخطط البياني المولد بدقة")
 
     # --- التبويب 6: توضيح الصورة بدقة عالية ---
     with sub_tabs[5]:
         st.subheader("🔍 معالجة وتصفية جودة الصور والخرائط الموشومة")
-        st.caption("🎯 التكلفة المحددة: خصم 3 محاولات لإعادة البناء البصري وتصفية النصوص المدمجة.")
+        st.caption("🎯 التكلفة المحددة: خصم 3 محاولات لإعادة البناء البصري وتصفية النصوص.")
         
         if st.button("🔍 تصفية وتحسين جودة معالم الصورة"):
             if uploaded_file:
                 if deduct_attempts(3):
                     run_synchronous_progress()
                     st.session_state.tab6_enhanced = uploaded_file.getvalue()
-                    st.success("✅ تمت معالجة وتصفية جودة الصورة بنجاح.")
+                    st.success("✅ تمت معالجة وتصفية جودة الصورة والخرائط بنجاح.")
             else:
                 st.warning("⚠️ يرجى تحميل ملف الصورة المستهدفة بالمعالجة أولاً من شريط الـ Upload.")
         
         if "tab6_enhanced" in st.session_state and uploaded_file:
-            st.image(st.session_state.tab6_enhanced, caption="📸 الخريطة/الصورة بعد تصفية وتنقية جودة المعالم")
+            st.image(st.session_state.tab6_enhanced, caption="📸 الصورة بعد تصفية وتنقية جودة المعالم")
 
     # --- التبويب 7: توليد الصوت الطبيعي ---
     with sub_tabs[6]:
@@ -476,20 +486,20 @@ def render_user_services():
         if speech_content.strip():
             total_words = len(speech_content.split())
             calculated_audio_cost = ((total_words - 1) // 40) + 1
-            st.warning(f"📊 إجمالي الكلمات المدخلة: {total_words} كلمة. سيتم خصم **{calculated_audio_cost}** محاولة من رصيدك فور البدء.")
+            st.warning(f"📊 سيتم خصم **{calculated_audio_cost}** محاولة من رصيدك فور البدء.")
             
             if st.button("🎙️ توليد وقراءة النص"):
                 if deduct_attempts(calculated_audio_cost):
                     run_synchronous_progress()
                     st.session_state.tab7_audio_ready = True
-                    st.success("🎉 تم إنتاج الملف الصوتي الأكاديمي بنقاء مميز وبصوت طبيعي.")
+                    st.success("🎉 تم إنتاج الملف الصوتي بنقاء مميز وبصوت طبيعي.")
         else:
             st.info("💡 أدخل نصاً في الحقل المخصص لتظهر لك التكلفة الدقيقة لعدد المحاولات التقديرية.")
 
     # --- التبويب 8: المستشار الذكي ---
     with sub_tabs[7]:
         st.subheader("💬 المستشار الأكاديمي والمنهجي المفتوح")
-        advisor_query = st.text_area("طرح أي سؤال علمي أو إداري أو منهجي يخص المنصة الأكاديمية:")
+        advisor_query = st.text_area("طرح أي سؤال علمي أو منهجية بحثية تخص المنصة الأكاديمية:")
         
         if st.button("🧠 إرسال طلب الاستشارة الفورية"):
             if advisor_query.strip():
@@ -510,14 +520,14 @@ def render_user_services():
                     except Exception as e:
                         st.error(f"⚠️ خطأ في معالجة طلب الاستشارة: {str(e)}")
                 else:
-                    st.info("💡 إجابة استشارية محاكاة: المنصة جاهزة لاستقبال ونقاش النظريات بدقة متناهية.")
+                    st.info("💡 إجابة استشارية محاكاة: المنصة جاهزة لاستقبال ونقاش النظريات وتوجيه الباحثين بدقة متناهية.")
                     
         if "tab8_output" in st.session_state:
             st.markdown("##### 💡 توصية وتحليل المستشار الأكاديمي الذكي:")
             st.write(st.session_state.tab8_output)
 
 # ==========================================
-#         بوابة الإدارة والأمن
+#          بوابة الإدارة والأمن
 # ==========================================
 if st.session_state.get("is_admin", False):
     st.markdown("## 🛠️ لوحة تحكم الإدارة العليا والسيرفر")
