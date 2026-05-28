@@ -1,9 +1,9 @@
+[server]
+maxUploadSize = 500  # 🌟 هنا يمكنك وضع 200 أو 500 أو حتى 1000 ميجابايت دون مشاكل
+
 [client]
-toolbarMode = "hidden"
-showErrorDetails = false
+toolbarMode = "developer"
+showErrorDetails = true
 
 [browser]
 gatherUsageStats = false
-
-[server]
-maxUploadSize = 100
