@@ -1,369 +1,486 @@
 import streamlit as st
-import streamlit.components.v1 as components
+
+# 1. ضبط إعدادات الصفحة لتكون مغلقة افتراضياً ومنع الوميض
+st.set_page_config(page_title="ScholarNode Academy", layout="wide", initial_sidebar_state="expanded")
+
+# 2. حجب القائمة الجانبية فورياً بالـ CSS قبل تحميل بقية الملف
+st.markdown("""
+    <style>
+        /* إخفاء كلي وشامل لكل شيء فوق المحتوى */
+        header, [data-testid="stHeader"], .stAppHeader, 
+        [data-testid="stToolbar"], #MainMenu, button[kind="header"] {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0px !important;
+        }
+        
+        /* إخفاء القطة والنقاط الثلاث بأسمائها البرمجية الجديدة */
+        .st-emotion-cache-zq5wmm, .st-emotion-cache-18ni7ve, 
+        .st-emotion-cache-yf7105, .st-emotion-cache-1647ite {
+            display: none !important;
+        }
+
+        /* رفع المحتوى للأعلى وتغطية مكان الشريط تماماً */
+        .main .block-container {
+            padding-top: 0rem !important;
+            margin-top: -70px !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# 3. استدعاء المكتبات
+import pandas as pd
+import os
+import io
 import uuid
+import random
+import string
 from datetime import datetime, timedelta
-import math
-from openai import OpenAI
-
-# محاولة الاستدعاء بشكل مرن جداً
-try:
-    import pypdf
-    HAS_PYPDF = True
-except Exception:
-    HAS_PYPDF = False
-
+from PIL import Image
+import fitz  # PyMuPDF
 try:
     import docx
+    from docx import Document
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Pt
     HAS_DOCX = True
-except Exception:
+except ImportError:
     HAS_DOCX = False
+from openai import OpenAI
+import time
+import math
 
-# ==========================================
-# 1. إعدادات الصفحة والتهيئة
-# ==========================================
-st.set_page_config(
-    page_title="ScholarNode Academy",
-    page_icon="🎓",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
+# --- بروتوكول الحماية والربط الذكي بسيرفر OpenAI ---
 if "OPENAI_API_KEY" in st.secrets:
-    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+    API_KEY = st.secrets["OPENAI_API_KEY"]
+    client = OpenAI(api_key=API_KEY)
 else:
-    st.error("❌ خطأ: مفتاح OPENAI_API_KEY غير معرف في الـ Secrets.")
+    st.error("❌ خطأ: مفتاح OPENAI_API_KEY غير معرف في الـ Secrets الخاص بـ Streamlit.")
 
-CUSTOM_CSS = """
-<style>
-    .header-box { background-color: #0056b3; border: 3px solid #ffcc00; border-radius: 8px; padding: 15px; text-align: center; margin-bottom: 25px; }
-    .header-box h1 { color: #000000 !important; font-family: 'Arial', sans-serif; font-weight: bold; margin: 0; }
-    .footer { text-align: center; padding: 20px; font-size: 0.9em; color: #888888; border-top: 1px solid #ddd; margin-top: 50px; }
-</style>
-"""
-st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+DB_CODES = "scholar_main_db.csv"
+DB_SECURITY = "device_tracking.csv"
 
-if 'initialized' not in st.session_state:
-    st.session_state['initialized'] = True
-    st.session_state['admin_password'] = "HAYDER_2026$$$"
-    st.session_state['active_codes'] = {
-        "SCHOLAR-DEMO-123": {"attempts": 130, "days": 30, "tier": 10000, "created_at": datetime.now().strftime("%Y-%m-%d")},
-        "PRO-MEMBER-999": {"attempts": 690, "days": 150, "tier": 50000, "created_at": datetime.now().strftime("%Y-%m-%d")}
-    }
-    st.session_state['logged_in'] = False
-    st.session_state['current_user_code'] = None
-    st.session_state['is_admin'] = False
-    st.session_state['admin_view_as_user'] = False
+# --- تهيئة قواعد البيانات الثابتة ---
+def init_db():
+    if not os.path.exists(DB_CODES):
+        pd.DataFrame(columns=["code", "credit", "remaining", "status", "activation_date", "expiry_date", "price_point"]).to_csv(DB_CODES, index=False)
+    if not os.path.exists(DB_SECURITY):
+        pd.DataFrame(columns=["device_id", "free_used", "is_blocked"]).to_csv(DB_SECURITY, index=False)
 
-if 'typed_code' not in st.session_state:
-    st.session_state['typed_code'] = ""
+init_db()
 
-CARDS_DATA = {
-    1000: {"attempts": 10, "days": 3},
-    5000: {"attempts": 60, "days": 20},
-    10000: {"attempts": 130, "days": 30},
-    20000: {"attempts": 270, "days": 60},
-    30000: {"attempts": 410, "days": 90},
-    40000: {"attempts": 550, "days": 120},
-    50000: {"attempts": 690, "days": 150},
-    100000: {"attempts": 1390, "days": 300}
-}
+# --- وظيفة إنشاء ملف Word بتنسيق أكاديمي رصين من الكود المستقر ---
+def create_word_file(text):
+    if not HAS_DOCX:
+        # حل بديل إذا لم تكن الحزمة مثبتة لمنع الانهيار
+        return io.BytesIO(text.encode('utf-8'))
+    doc = Document()
+    style = doc.styles['Normal']
+    font = style.font
+    font.name = 'Arial'
+    font.size = Pt(14)
+    p = doc.add_paragraph(text)
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    bio = io.BytesIO()
+    doc.save(bio)
+    bio.seek(0)
+    return bio
 
+# --- وظائف الخصم والحماية من الكود المستقر ---
+def deduct_attempt(amount=1):
+    if st.session_state.code == "HAYDER_2026":
+        return True
+    try:
+        df = pd.read_csv(DB_CODES)
+        idx_list = df.index[df['code'] == st.session_state.code].tolist()
+        if idx_list:
+            idx = idx_list[0]
+            if df.at[idx, 'remaining'] >= amount:
+                df.at[idx, 'remaining'] -= amount
+                df.to_csv(DB_CODES, index=False)
+                st.session_state.credit = df.at[idx, 'remaining']
+                return True
+    except Exception:
+        pass
+    return False
+
+# تنبيه محاكاة التحميل الذكي
 def simulate_processing():
-    import time
     progress_bar = st.progress(0)
     status_text = st.empty()
-    for percent_complete in range(0, 101, 20):
+    for percent_complete in range(0, 101, 25):
         time.sleep(0.05)
         progress_bar.progress(percent_complete)
-        status_text.text(f"جاري المعالجة الذكية... {percent_complete}%")
+        status_text.text(f"جاري المعالجة الأكاديمية عبر سيرفرات المعالجة الفعّالة... {percent_complete}%")
     status_text.empty()
     progress_bar.empty()
 
-def render_cards_table():
-    html_table = """
-    <style>
-        .styled-table { width: 100%; border-collapse: collapse; font-size: 14px; direction: rtl; text-align: center; }
-        .styled-table th { background-color: #e6f2ff; color: #003366; padding: 10px; border: 1px solid #ffe680; }
-        .styled-table td { padding: 10px; border: 1px solid #ffe680; }
-        .styled-table tr:nth-child(even) { background-color: #fffde6; }
-    </style>
-    <table class="styled-table">
-        <thead><tr><th>فئة الكارت (دينار عراقي)</th><th>رصيد المحاولات المتاحة</th><th>فترة صلاحية الكود</th></tr></thead>
-        <tbody>
-    """
-    for price, info in CARDS_DATA.items():
-        html_table += f"<tr><td><b>{price:,} د.ع</b></td><td>{info['attempts']} محاولة</td><td>{info['days']} يوم</td></tr>"
-    html_table += "</tbody></table>"
-    components.html(html_table, height=380, scrolling=True)
+# تنسيق الألوان الذكي (CSS) المتوافق مع الهيكل القديم
+st.markdown("""
+<style>
+#MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
+.stDeployButton {display:none;}
+.main-header { background: #1e3a8a; color: #ffffff !important; padding: 20px; text-align: center; border-radius: 15px; border: 4px solid #facc15; margin-bottom: 25px; }
+.payment-box { background: #1e3a8a; color: white !important; padding: 18px; border-radius: 12px; border: 3px solid #facc15; font-size: 0.9rem; line-height: 1.6; margin-bottom: 20px; }
+.admin-area { background: #f0f4f8; border: 2px solid #1e3a8a; padding: 15px; border-radius: 10px; margin-top: 10px; color: #1e3a8a; }
+</style>
+""", unsafe_allow_html=True)
 
-def logout():
-    st.session_state['logged_in'] = False
-    st.session_state['current_user_code'] = None
-    st.session_state['is_admin'] = False
-    st.session_state['admin_view_as_user'] = False
-    st.session_state['typed_code'] = ""
-    st.rerun()
-
-# دالة القراءة الآمنة المطلقة - مستحيل تسبب مستطيل أحمر
-def safe_extract_text(uploaded_file):
-    if uploaded_file is None:
-        return ""
+# تفعيل السلايد بار عند الضرورة لجدول فئات الاشتراكات والمحاولات المعتمد لديك
+with st.sidebar:
+    st.markdown("### 🏦 معلومات الحساب والدعم")
+    st.markdown("""
+    <div class="payment-box">
+        👤 <b>الاسم:</b> HAYDER Z. JASIM<br>
+        💳 <b>ماستر كارد الرافدين:</b><br> 8369719342<br>
+        📞 <b>رقم الهاتف (تفعيل):</b><br> 07879974395
+    </div>
+    """, unsafe_allow_html=True)
     
-    # إذا كانت المكتبات غير مثبتة بالسيرفر، نقرأ الملف كـ النص الخام المتاح لمنع الانهيار
-    try:
-        if uploaded_file.name.endswith('.pdf'):
-            if HAS_PYPDF:
-                pdf_reader = pypdf.PdfReader(uploaded_file)
-                return "".join([page.extract_text() or "" for page in pdf_reader.pages[:15]])
-            else:
-                return f"اسم الملف: {uploaded_file.name} - (محتوى مستخلص كبيانات ثنائية نظراً لعدم اكتمال تثبيت السيرفر)"
-        else:
-            if HAS_DOCX:
-                doc = docx.Document(uploaded_file)
-                return "\n".join([para.text for para in doc.paragraphs])
-            else:
-                return f"اسم الملف: {uploaded_file.name} - (محتوى مستخلص كبيانات ثنائية نظراً لعدم اكتمال تثبيت السيرفر)"
-    except Exception:
-        return f"ملف مرفوع: {uploaded_file.name}"
+    st.markdown("---")
+    st.markdown("### 🎫 فئات كروت الاشتراك")
+    subscription_plans = [
+        {"الفئة": "1,000 دينار", "المحاولات": "10 محاولات"},
+        {"الفئة": "5,000 دينار", "المحاولات": "50 محاولة"},
+        {"الفئة": "10,000 دينار", "المحاولات": "100 محاولة"},
+        {"الفئة": "20,000 دينار", "المحاولات": "200 محاولة"},
+        {"الفئة": "30,000 دينار", "المحاولات": "300 محاولة"},
+        {"الفئة": "40,000 دينار", "المحاولات": "400 محاولة"},
+        {"الفئة": "50,000 دينار", "المحاولات": "500 محاولة"},
+        {"الفئة": "100,000 دينار", "المحاولات": "1000 محاولة"}
+    ]
+    st.table(subscription_plans)
+    st.markdown("---")
 
-# ==========================================
-# 2. الواجهة الرئيسية
-# ==========================================
-if not st.session_state['logged_in'] and not st.session_state['is_admin']:
-    HEADER_HTML = '<div class="header-box"><h1>منصة التعليم الأكاديمية (ScholarNode)</h1></div>'
-    st.markdown(HEADER_HTML, unsafe_allow_html=True)
-    col_main, col_payment = st.columns([5, 3], gap="large")
-    
-    with col_main:
-        st.subheader("🔒 الدخول الآمن للمنصة")
-        show_code = st.checkbox("👁️ إظهار الكود المدخل")
-        input_code = st.text_input("ادخل كود التفعيل", type="default" if show_code else "password", placeholder="مثال: SCHOLAR-XXXX-XXXX", value=st.session_state['typed_code'], key="login_input_field")
-        st.session_state['typed_code'] = input_code
-
-        if st.button("دخول المنصة", use_container_width=True):
-            cleaned_code = st.session_state['typed_code'].strip()
-            if cleaned_code == st.session_state['admin_password']:
-                st.session_state['is_admin'] = True
+    if "auth" in st.session_state:
+        st.write(f"🎟️ **الكود المفعل:** `{st.session_state.code}`")
+        if st.session_state.code == "HAYDER_2026":
+            st.markdown("""
+                <style>
+                [data-testid="stSidebar"], .stSidebar { display: block !important; visibility: visible !important; width: auto !important; }
+                header, .stAppHeader { display: block !important; visibility: visible !important; height: auto !important; }
+                </style>
+            """, unsafe_allow_html=True)
+            st.markdown("### ⚙️ الإدارة")
+            if st.button("🚪 تسجيل الخروج من الإدارة"):
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
                 st.rerun()
-            elif cleaned_code in st.session_state['active_codes']:
-                user_data = st.session_state['active_codes'][cleaned_code]
-                if user_data['attempts'] <= 0:
-                    st.error("❌ عذراً، هذا الكود غير فعال بسبب نفاد رصيد المحاولات بالكامل.")
+
+# --- [1. بوابة الدخول والمعلومات - تظهر فقط قبل تسجيل الدخول] ---
+if "auth" not in st.session_state:
+    st.markdown("""
+        <style>
+            [data-testid="stSidebar"] { display: block !important; }
+            .stDeployButton { display:none !important; }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    st.markdown('<div class="main-header"><h1>ScholarNode Academy</h1></div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align: center;"><h3>🔑 بوابة الدخول الآمن للمنصة</h3></div>', unsafe_allow_html=True)
+    
+    in_c = st.text_input("أدخل كود التفعيل للدخول:", type="password", key="main_login_input")
+
+    if st.button("دخول المنصة", use_container_width=True):
+        input_cleaned = in_c.strip()
+        if input_cleaned == "HAYDER_2026":
+            st.session_state.update({"auth": True, "is_admin": True, "credit": 9999, "code": "HAYDER_2026"})
+            st.rerun()
+        else:
+            # الفحص داخل قاعدة البيانات للكودات المصدرة
+            try:
+                df = pd.read_csv(DB_CODES)
+                idx_list = df.index[df['code'] == input_cleaned].tolist()
+                if idx_list:
+                    idx = idx_list[0]
+                    rem = df.at[idx, 'remaining']
+                    if rem > 0:
+                        st.session_state.update({"auth": True, "is_admin": False, "credit": rem, "code": input_cleaned})
+                        st.rerun()
+                    else:
+                        st.error("❌ عذراً، رصيد هذا الكود نفد بالكامل.")
                 else:
-                    st.session_state['logged_in'] = True
-                    st.session_state['current_user_code'] = cleaned_code
+                    st.error("⚠️ الكود غير صحيح أو غير فعال.")
+            except Exception:
+                st.error("⚠️ خطأ في الاتصال بقاعدة البيانات.")
+                
+    st.stop()
+
+# --- [2. محتوى المنصة - يظهر فقط بعد الدخول] ---
+
+# رسالة الترحيب الموحدة دكتور Courage
+st.markdown(f'<div class="main-header"><h1>مرحباً دكتور Courage</h1><h2>الرصيد المتاح: {st.session_state.credit} محاولة</h2></div>', unsafe_allow_html=True)
+
+# لوحة الإدارة للمدير (HAYDER_2026)
+if st.session_state.get('is_admin', False):
+    st.markdown('<div class="admin-area"><h3>🛠️ إدارة اشتراكات ScholarNode العليا</h3>', unsafe_allow_html=True)
+    admin_tab1, admin_tab2 = st.tabs(["🎫 إصدار كروت جديدة", "📋 كشف وفحص الأكواد المفعّلة"])
+    
+    with admin_tab1:
+        st.info("💡 السياسة الحالية: 1,000=10 | 5,000=50 | 10,000=100 محاولة")
+        card_value = st.selectbox("💰 اختر قيمة الكارت (دينار عراقي):", 
+                                 [1000, 5000, 10000, 20000, 30000, 40000, 50000, 100000],
+                                 format_func=lambda x: f"{x:,} دينار")
+        
+        if card_value == 1000:
+            auto_credit = 10
+        elif card_value == 5000:
+            auto_credit = 50
+        else:
+            auto_credit = int(card_value / 100)
+
+        col_gen1, col_gen2 = st.columns([2, 1])
+        if "generated_code" not in st.session_state:
+            st.session_state.generated_code = ""
+            
+        with col_gen2:
+            if st.button("🔄 توليد كود عشوائي"):
+                random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+                st.session_state.generated_code = f"SN-{card_value // 1000}K-{random_suffix}"
+        
+        with col_gen1:
+            c_new = st.text_input("🔑 كود التفعيل المولد:", value=st.session_state.generated_code)
+            
+        c_credit = st.number_input("🎟️ الرصيد الممنوح (محاولات):", min_value=1, value=auto_credit)
+        
+        if st.button("✅ تفعيل وحفظ الكود في قاعدة البيانات"):
+            if c_new:
+                df = pd.read_csv(DB_CODES)
+                new_entry = pd.DataFrame([{
+                    "code": c_new.strip(), 
+                    "credit": c_credit, 
+                    "remaining": c_credit, 
+                    "status": "Active", 
+                    "activation_date": datetime.now().strftime('%Y-%m-%d'),
+                    "price_point": f"{card_value:,} IQD"
+                }])
+                pd.concat([df, new_entry], ignore_index=True).to_csv(DB_CODES, index=False)
+                st.success(f"✔️ تم بنجاح! كود {c_new} جاهز للتسليم والعمل فوراً.")
+                st.session_state.generated_code = "" 
+            else:
+                st.error("⚠️ يرجى توليد الكود أولاً")
+
+    with admin_tab2:
+        st.dataframe(pd.read_csv(DB_CODES), use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# --- مكان الرفع الاستراتيجي (مستقل وخارج التبويبات تماماً لمنع الخطأ الأحمر) ---
+st.markdown("### 📂 مستودع رفع المستندات الموحد")
+up = st.file_uploader("ارفع ملف البحث العلمي بصيغة (PDF فقط حالياً) لتفعيل التبويبات المتقدمة بالأسفل:", type=["pdf"])
+
+# التبويبات الرئيسية المجمعة للمنصة
+tabs = st.tabs([
+    "💬 المستشار الأكاديمي المفتوح", 
+    "🌍 الترجمة الأكاديمية الاحترافية", 
+    "⚖️ الترجمة القانونية والصياغة",
+    "🎓 المراجعة العلمية والنقد", 
+    "🎨 توليد الصور والمخططات",
+    "🎙️ توليد الصوت الطبيعي الذكي",
+    "📄 معاينة ومناقشة الملف"
+])
+
+# 1. تبويب المستشار الذكي وبناء الخطط
+with tabs[0]:
+    st.subheader("🎓 مستشار بناء الخطط والبحوث والاستشارات العلمية")
+    if "chat_history" not in st.session_state: 
+        st.session_state.chat_history = []
+    
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]): 
+            st.markdown(message["content"])
+    
+    c_prompt = st.chat_input("اطلب بناء خطة بحثية، تحديد فجوة معرفية، أو استشارة أكاديمية...")
+    
+    if c_prompt:
+        if deduct_attempt(1):
+            simulate_processing()
+            res = client.chat.completions.create(
+                model="gpt-4o", 
+                messages=[{"role": "system", "content": "أنت بروفيسور خبير ومستشار أكاديمي تقدم إرشادات صائبة وتصيغ خطط بحثية ممتازة بدقة علمية عالية."}] + st.session_state.chat_history + [{"role": "user", "content": c_prompt}]
+            )
+            response = res.choices[0].message.content
+            st.session_state.chat_history.append({"role": "user", "content": c_prompt})
+            st.session_state.chat_history.append({"role": "assistant", "content": response})
+            st.session_state.last_plan = response
+            st.rerun()
+
+    if "last_plan" in st.session_state:
+        st.markdown("---")
+        st.success("✅ المخرجات الأكاديمية جاهزة للتحميل والتصدير:")
+        st.download_button(
+            label="📥 تحميل المخرجات كملف Word مجهز للتعديل",
+            data=create_word_file(st.session_state.last_plan),
+            file_name=f"ScholarNode_Output_{datetime.now().strftime('%Y%m%d')}.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+
+# كتلة المعالجة المرتبطة برفع الملف (تتفعل تلقائياً عند سحب وإفلات الملف بالأعلى)
+if up:
+    up.seek(0)
+    doc_v = fitz.open(stream=up.read(), filetype="pdf")
+    p_count = len(doc_v)
+    
+    # 2. تبويب الترجمة الأكاديمية الاحترافية
+    with tabs[1]:
+        st.subheader("🌍 مترجم ScholarNode الشامل (صياغة ومصطلحات أكاديمية)")
+        t_lang = st.selectbox("اختر اللغة المستهدفة للترجمة:", ["العربية", "English"], key="t_lang_new")
+        
+        if st.button(f"🚀 بدء ترجمة {p_count} صفحة بالكامل"):
+            if st.session_state.get('credit', 0) >= p_count or st.session_state.code == "HAYDER_2026":
+                simulate_processing()
+                if deduct_attempt(p_count):
+                    full_translation = ""
+                    prog_bar = st.progress(0)
+                    for i in range(p_count):
+                        page_text = doc_v[i].get_text()
+                        if page_text.strip():
+                            res = client.chat.completions.create(
+                                model="gpt-4o-mini",
+                                messages=[{"role": "system", "content": f"Translate this scientific text professionally to {t_lang}, preserving all academic terms accurately."}, 
+                                          {"role": "user", "content": page_text}]
+                            )
+                            full_translation += f"\n--- صفحة {i+1} ---\n" + res.choices[0].message.content + "\n"
+                        prog_bar.progress((i + 1) / p_count)
+                    st.session_state.translation_result = full_translation
+                    st.success("✅ اكتملت عملية الترجمة الأكاديمية بنجاح!")
                     st.rerun()
             else:
-                st.error("⚠️ الكود غير فعال أو غير صحيح.")
-
-        st.write("---")
-        st.subheader("📊 فئات الاشتراكات والبطاقات المتوفرة")
-        render_cards_table()
-
-    with col_payment:
-        PAYMENT_HTML = """
-        <div style="background-color: rgba(255, 230, 128, 0.15); border-right: 5px solid #ffcc00; padding: 20px; border-radius: 5px;">
-            <h4 style="color: #0056b3; margin-top:0;">💳 معلومات الدفع والاشتراك</h4>
-            <p>لغرض تفعيل أو شراء كود تفعيل جديد، يرجى التحويل عبر المحفظة أدناه:</p>
-            <hr style="border-color: #ffe680;">
-            <b>حساب الماستر كارد الرافدين:</b><br><code>8369719342</code><br><br>
-            <b>الاسم:</b><br><code>HAYDER Z. JASIM</code><br><br>
-            <b>الهاتف والدعم الفني:</b><br><code>07879974395</code>
-        </div>
-        """
-        st.markdown(PAYMENT_HTML, unsafe_allow_html=True)
-    st.markdown('<div class="footer">ScholarNode Academy © 2026</div>', unsafe_allow_html=True)
-
-# ==========================================
-# 3. واجهة المستخدم بعد تسجيل الدخول
-# ==========================================
-elif st.session_state['logged_in'] or (st.session_state['is_admin'] and st.session_state['admin_view_as_user']):
-    current_code = st.session_state['current_user_code'] if st.session_state['logged_in'] else "ADMIN-PREVIEW"
-    user_info = st.session_state['active_codes'].get(current_code, {"attempts": 999, "days": 30, "tier": 10000, "created_at": datetime.now().strftime("%Y-%m-%d")})
-    
-    expiration_date = datetime.strptime(user_info['created_at'], "%Y-%m-%d") + timedelta(days=user_info['days'])
-    formatted_exp_date = expiration_date.strftime("%Y-%m-%d")
-
-    WELCOME_HTML = f"""
-    <div style="background-color: #e6f2ff; border-left: 5px solid #0056b3; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-        <h3 style="margin:0; color:#003366;">👋 مرحباً بك في ScholarNode</h3>
-        <p style="margin:5px 0 0 0; font-size:1.1em;">كود الاشتراك النشط: <b>{current_code}</b> | <b>رصيد المحاولات: <span style="color:#d9534f;">{user_info['attempts']}</span> محاولة</b></p>
-    </div>
-    """
-    st.markdown(WELCOME_HTML, unsafe_allow_html=True)
-
-    with st.sidebar:
-        st.markdown("### 📋 معلومات الاشتراك")
-        st.info(f"**المحاولات المتبقية:** {user_info['attempts']}")
-        st.info(f"**تاريخ الانتهاء:** {formatted_exp_date}")
-        st.markdown("---")
-        render_cards_table()
-        if st.button("🚪 تسجيل الخروج", use_container_width=True, on_click=logout): pass
-
-    st.markdown("### 🛠️ الخدمات الأكاديمية المتطورة")
-    tabs = st.tabs(["📖 معاينة ومناقشة المستند", "🔍 المراجعة الأكاديمية والنقد", "📝 الترجمة الأكاديمية الاحترافية", "⚖️ الترجمة القانونية للمستندات", "🎨 توليد الصور والمخططات", "🎬 إنشاء فيديو قصير", "🖼️ توضيح وتحسين الصور", "🎙️ توليد الصوت الذكي", "🤖 المستشار الذكي المفتوح"])
-
-    # ---- التبويب 1 ----
-    with tabs[0]:
-        st.header("📖 معاينة ومناقشة المستند")
-        file_tab1 = st.file_uploader("📥 تحميل ملف البحث بصيغة (PDF أو Word)", type=["pdf", "docx"], key="uploader_t1")
-        active_text1 = safe_extract_text(file_tab1)
-        if file_tab1: st.success(f"✔️ تم رفع ({file_tab1.name}) بنجاح وهو آمن تماماً وجاهز.")
+                st.error(f"عذراً، رصيدك الحالي لا يكفي لترجمة {p_count} صفحة بالكامل.")
         
-        user_query = st.text_input("اسأل الذكاء الاصطناعي عن الملف:", key="query_t1")
-        if st.button("تحليل ومناقشة الملف", key="btn_t1"):
-            if not file_tab1: st.warning("⚠️ يرجى رفع ملف أولاً.")
-            else:
-                simulate_processing()
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "system", "content": "أنت مساعد أكاديمي خبير."}, {"role": "user", "content": f"الملف: {active_text1}\nالسؤال: {user_query}"}]
-                )
-                if not st.session_state['is_admin']: st.session_state['active_codes'][current_code]['attempts'] -= 1
-                st.write(response.choices[0].message.content)
-                st.rerun()
+        if "translation_result" in st.session_state:
+            st.download_button(
+                label="📥 تحميل الكتاب أو المستند المترجم (Word)",
+                data=create_word_file(st.session_state.translation_result),
+                file_name="ScholarNode_Translated_Doc.docx"
+            )
 
-    # ---- التبويب 2 ----
-    with tabs[1]:
-        st.header("🔍 المراجعة الأكاديمية والنقد")
-        file_tab2 = st.file_uploader("📥 رفع المستند للنقد العلمي", type=["pdf", "docx"], key="uploader_t2")
-        active_text2 = safe_extract_text(file_tab2)
-        if file_tab2: st.success(f"✔️ تم رفع ({file_tab2.name}) بنجاح.")
-        
-        if st.button("البدء بالنقد الأكاديمي الشامل", key="btn_t2"):
-            if not file_tab2: st.warning("⚠️ يرجى رفع الملف.")
-            else:
-                simulate_processing()
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "system", "content": "قم بنقد النص علمياً."}, {"role": "user", "content": active_text2}]
-                )
-                if not st.session_state['is_admin']: st.session_state['active_codes'][current_code]['attempts'] -= 5
-                st.write(response.choices[0].message.content)
-                st.rerun()
-
-    # ---- التبويب 3 ----
+    # 3. تبويب الترجمة القانونية للمستندات
     with tabs[2]:
-        st.header("📝 الترجمة الأكاديمية الاحترافية")
-        file_tab3 = st.file_uploader("📥 رفع ملف الترجمة الأكاديمية", type=["pdf", "docx"], key="uploader_t3")
-        active_text3 = safe_extract_text(file_tab3)
-        if file_tab3: st.success(f"✔️ تم رفع ({file_tab3.name}) بنجاح.")
+        st.subheader("⚖️ صياغة وترجمة المستندات ترجمة قانونية رسمية")
+        legal_entity = st.text_input("اذكر الجهة الرسمية الموجه لها المستند (مثال: محكمة، جامعة، وزارة):", key="entity_t4")
         
-        target_lang = st.selectbox("اختر اللغة:", ["العربية", "English"], key="lang_t3")
-        if st.button("تنفيذ الترجمة الأكاديمية", key="btn_t3"):
-            if not file_tab3: st.warning("⚠️ يرجى رفع الملف.")
-            else:
+        if st.button("🚀 بدء الصياغة القانونية المعتمدة (تكلفة ثابتة: 5 محاولات)"):
+            if st.session_state.get('credit', 0) >= 5 or st.session_state.code == "HAYDER_2026":
                 simulate_processing()
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "system", "content": f"ترجم النص ترجمة أكاديمية إلى {target_lang}"}, {"role": "user", "content": active_text3[:4000]}]
-                )
-                if not st.session_state['is_admin']: st.session_state['active_codes'][current_code]['attempts'] -= 3
-                st.write(response.choices[0].message.content)
-                st.rerun()
+                if deduct_attempt(5):
+                    # دمج نصوص الصفحات الأولى للترجمة القانونية المقننة
+                    chunk = "\n".join([doc_v[j].get_text() for j in range(min(5, p_count))])
+                    res = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role": "system", "content": f"أنت مترجم قانوني محلف ومجاز. صغ وترجم النص التالي بلغة قانونية رسمية صارمة ومطابقة للمعايير لتناسب التقديم إلى: {legal_entity}."},
+                                  {"role": "user", "content": chunk}]
+                    )
+                    st.session_state.legal_result = res.choices[0].message.content
+                    st.success("✅ تم الانتهاء من صياغة الوثيقة القانونية!")
+                    st.rerun()
+            else:
+                st.error("❌ رصيدك الحالي منخفض لإجراء الصياغة القانونية.")
 
-    # ---- التبويب 4 ----
+        if "legal_result" in st.session_state:
+            st.markdown(st.session_state.legal_result)
+            st.download_button("📥 تحميل المستند القانوني (Word)", data=create_word_file(st.session_state.legal_result), file_name="Legal_Translation.docx")
+
+    # 4. تبويب المراجعة العلمية والنقد
     with tabs[3]:
-        st.header("⚖️ ترجمة المستندات ترجمة قانونية")
-        file_tab4 = st.file_uploader("📥 رفع العقد أو الوثيقة الرسمية", type=["pdf", "docx"], key="uploader_t4")
-        active_text4 = safe_extract_text(file_tab4)
-        if file_tab4: st.success(f"✔️ تم رفع ({file_tab4.name}) بنجاح.")
+        st.subheader("🎓 مراجعة نقدية أكاديمية ومنهجية شاملة للبحث")
+        review_lang = st.selectbox("اختر لغة تقرير النقد الأكاديمي:", ["العربية", "English"], key="rev_lang")
         
-        legal_entity = st.text_input("الجهة الرسمية الموجه لها المستند:", key="entity_t4")
-        if st.button("بدء صياغة الترجمة القانونية", key="btn_t4"):
-            if not file_tab4: st.warning("⚠️ يرجى رفع الملف.")
-            else:
-                simulate_processing()
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "system", "content": f"ترجم النص ترجمة قانونية موجهة إلى {legal_entity}"}, {"role": "user", "content": active_text4[:4000]}]
-                )
-                if not st.session_state['is_admin']: st.session_state['active_codes'][current_code]['attempts'] -= 5
-                st.write(response.choices[0].message.content)
+        if st.button("توليد تقرير النقد المنهجي"):
+            simulate_processing()
+            if deduct_attempt(max(1, int(p_count/2))):
+                full_review = ""
+                for i in range(0, p_count, 10):
+                    chunk = "\n".join([doc_v[j].get_text() for j in range(i, min(i+10, p_count))])
+                    res = client.chat.completions.create(
+                        model="gpt-4o-mini", 
+                        messages=[{"role": "system", "content": f"Provide a strict academic review and structural critique in {review_lang} highlighting methodology flaws and enhancement points."},
+                                  {"role": "user", "content": chunk}]
+                    )
+                    full_review += res.choices[0].message.content + "\n"
+                st.session_state.review_result = full_review
+                st.success("✅ تم إنتاج تقرير التحكيم العلمي المنهجي!")
                 st.rerun()
+        
+        if "review_result" in st.session_state:
+            st.markdown(st.session_state.review_result)
+            st.download_button("📥 تحميل تقرير المراجعة والنقد (Word)", data=create_word_file(st.session_state.review_result), file_name="Academic_Critique_Report.docx")
 
-    # ---- التبويب 5 ----
-    with tabs[4]:
-        st.header("🎨 توليد الصور والمخططات")
-        image_prompt = st.text_area("أدخل الوصف التفصيلي للصورة:", key="prompt_t5")
-        if st.button("توليد الصورة", key="btn_t5"):
-            if not image_prompt.strip(): st.warning("⚠️ يرجى كتابة وصف.")
-            else:
-                simulate_processing()
-                response = client.images.generate(model="dall-e-3", prompt=image_prompt, n=1, size="1024x1024")
-                if not st.session_state['is_admin']: st.session_state['active_codes'][current_code]['attempts'] -= 5
-                st.image(response.data[0].url, caption="المخطط المولد")
-
-    # ---- التبويب 6 ----
-    with tabs[5]:
-        st.header("🎬 إنشاء فيديو قصير")
-        st.info("حزم توليد الفيديو المباشر Sora API لا تزال قيد الإطلاق المحدود.")
-
-    # ---- التبويب 7 ----
+    # 7. تبويب معاينة ومناقشة الملف من الكود المستقر الناجح
     with tabs[6]:
-        st.header("🖼️ توضيح وتحسين الصور")
-        img_file7 = st.file_uploader("📥 تحميل ملف الصورة", type=["png", "jpg", "jpeg"], key="uploader_t7")
-        if img_file7: st.image(img_file7, caption="الصورة المرفوعة بنجاح")
-
-    # ---- التبويب 8 ----
-    with tabs[7]:
-        st.header("🎙️ توليد الصوت الذكي")
-        audio_text = st.text_area("اكتب النص المراد توليده صوتياً:", key="text_t8")
-        audio_voice = st.selectbox("اختر خامة الصوت:", ["onyx", "nova"], key="voice_t8")
-        if st.button("توليد ملف صوتي مسموع", key="btn_t8"):
-            if not audio_text.strip(): st.warning("⚠️ يرجى كتابة نص.")
-            else:
+        st.subheader("📄 معاينة ومناقشة صفحات المستند المرفوع")
+        p_num = st.number_input("عرض وعزل الصفحة رقم:", 1, p_count, 1)
+        st.markdown("---")
+        user_query = st.text_input("💬 اسأل الذكاء الاصطناعي عن محتوى هذه الصفحة تحديداً:")
+        
+        if st.button("إرسال السؤال ومناقشة النص"):
+            if user_query:
                 simulate_processing()
-                response = client.audio.speech.create(model="tts-1", voice=audio_voice, input=audio_text)
-                with open("temp_output.mp3", "wb") as f: f.write(response.content)
-                if not st.session_state['is_admin']: st.session_state['active_codes'][current_code]['attempts'] -= 5
-                st.audio("temp_output.mp3")
+                if deduct_attempt(1):
+                    page_content = doc_v[p_num-1].get_text()
+                    res = client.chat.completions.create(
+                        model="gpt-4o", 
+                        messages=[
+                            {"role": "system", "content": "أنت مساعد أكاديمي خبير ومحكم أبحاث. أجب بناءً على النص المستخلص من الصفحة المرفقة بدقة بالغة وبنفس لغة السؤال."},
+                            {"role": "user", "content": f"النص المستخرج من الصفحة:\n{page_content}\n\nسؤال الباحث المستفسر:\n{user_query}"}
+                        ]
+                    )
+                    st.info(f"**إجابة المستشار الأكاديمي الفورية:**\n\n{res.choices[0].message.content}")
+        
+        st.markdown("---")
+        # استخراج المعاينة الصورية الحية لصفحة الـ PDF بكفاءة عالية لمنع الأخطاء
+        pix = doc_v[p_num-1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
+        st.image(Image.open(io.BytesIO(pix.tobytes())), use_container_width=True)
 
-    # ---- التبويب 9 ----
-    with tabs[8]:
-        st.header("🤖 المستشار الذكي المفتوح")
-        advisor_query = st.text_area("اطرح سؤالك هنا:", key="query_t9")
-        if st.button("إرسال الاستشارة", key="btn_t9"):
-            if not advisor_query.strip(): st.warning("⚠️ يرجى كتابة استفسارك.")
-            else:
-                simulate_processing()
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "system", "content": "أنت مستشار أكاديمي خبير."}, {"role": "user", "content": advisor_query}]
-                )
-                total_words = len(advisor_query.split()) + len(response.choices[0].message.content.split())
-                cost = math.ceil(total_words / 600)
-                if not st.session_state['is_admin']: st.session_state['active_codes'][current_code]['attempts'] -= cost
-                st.write(response.choices[0].message.content)
-                st.rerun()
+else:
+    # الرسائل التنبيهية الذكية والآمنة من كودك المستقر لمنع ظهور أي أخطاء متصفح قبل الرفع
+    with tabs[1]: st.info("📂 يرجى سحب وإفلات أو رفع ملف PDF من الأعلى لتفعيل خدمة الترجمة الأكاديمية الشاملة.")
+    with tabs[2]: st.info("📂 يرجى سحب وإفلات أو رفع ملف PDF من الأعلى لتفعيل خدمة الصياغة والترجمة القانونية.")
+    with tabs[3]: st.info("📂 يرجى سحب وإفلات أو رفع ملف PDF من الأعلى لتفعيل خدمة التحكيم والنقد العلمي الشامل.")
+    with tabs[6]: st.info("📂 يرجى سحب وإفلات أو رفع ملف PDF من الأعلى لمعاينة ومناقشة الصفحات صورياً ونصياً.")
 
-    st.markdown('<div class="footer">ScholarNode Academy © 2026</div>', unsafe_allow_html=True)
-
-# ==========================================
-# 4. لوحة تحكم الإدارة
-# ==========================================
-elif st.session_state['is_admin'] and not st.session_state['admin_view_as_user']:
-    st.markdown('<div style="background-color: #ffe680; padding: 15px; border-radius: 5px; margin-bottom: 25px;"><h2 style="text-align:center;margin:0;">🛠️ لوحة تحكم الإدارة السرية العليا</h2></div>', unsafe_allow_html=True)
-    admin_tabs = st.tabs(["🔑 توليد الكودات", "📊 مراجعة الكودات", "👁️ واجهة العميل"])
-
-    with admin_tabs[0]:
-        selected_tier = st.selectbox("اختر فئة كارت الاشتراك:", list(CARDS_DATA.keys()), format_func=lambda x: f"{x:,} دينار عراقي")
-        if st.button("توليد وإصدار كود التفعيل"):
-            gen_key = f"SCHOLAR-{selected_tier // 1000}K-{str(uuid.uuid4())[:8].upper()}"
-            st.session_state['active_codes'][gen_key] = {"attempts": CARDS_DATA[selected_tier]['attempts'], "days": CARDS_DATA[selected_tier]['days'], "tier": selected_tier, "created_at": datetime.now().strftime("%Y-%m-%d")}
-            st.success("🎉 تم التوليد بنجاح!")
-            st.text_input("📋 كود التفعيل المولد:", value=gen_key)
-
-    with admin_tabs[1]:
-        if len(st.session_state['active_codes']) == 0: st.info("لا توجد أكواد مفعّلة حالياً.")
+# 5. تبويب توليد الصور والمخططات (مستقل ولا يحتاج لملف)
+with tabs[4]:
+    st.subheader("🎨 توليد الصور والمخططات التوضيحية للأبحاث")
+    image_prompt = st.text_area("أدخل الوصف الأكاديمي التفصيلي الدقيق للمخطط أو الشكل المطلوب بيانه:", key="img_prompt_t5")
+    if st.button("بدء توليد الشكل التوضيحي (التكلفة: 5 محاولات)"):
+        if not image_prompt.strip():
+            st.warning("⚠️ يرجى كتابة وصف المخطط أولاً.")
+        elif st.session_state.get('credit', 0) < 5 and st.session_state.code != "HAYDER_2026":
+            st.error("❌ الرصيد المتاح غير كافٍ لتوليد الصور.")
         else:
-            clist = [{"كود التفعيل": c, "الفئة المادية": f"{d['tier']:,} د.ع", "المحاولات المتبقية": d['attempts'], "صلاحية الأيام": d['days'], "تاريخ الإصدار": d['created_at']} for c, d in st.session_state['active_codes'].items()]
-            st.table(clist)
+            simulate_processing()
+            try:
+                response = client.images.generate(model="dall-e-3", prompt=image_prompt, n=1, size="1024x1024")
+                if deduct_attempt(5):
+                    st.success("🎉 تم بناء المخطط البياني بنجاح الفني!")
+                    st.image(response.data[0].url, caption="المخطط المولد بواسطة المنصة")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"❌ حدث عائق أثناء توليد الصورة: {e}")
 
-    with admin_tabs[2]:
-        if st.button("🚀 الانتقال المباشر لطور محاكاة المشترك"):
-            st.session_state['admin_view_as_user'] = True
-            st.rerun()
-            
-    st.markdown("---")
-    if st.button("🚪 خروج من حساب الإدارة"): logout()
+# 6. تبويب توليد الصوت الاحترافي (مستقل ولا يحتاج لملف)
+with tabs[5]:
+    st.subheader("🎙️ تحويل النصوص الأكاديمية إلى ملفات صوتية طبيعية (TTS)")
+    audio_text = st.text_area("اكتب أو الصق النص المراد قراءته وتحويله إلى محتوى مسموع وبشري:", key="audio_text_t8")
+    audio_voice = st.selectbox("اختر طبقة وخامة الصوت المفضلة:", ["onyx", "nova"], key="voice_t8")
+    
+    if st.button("تحويل المحتوى وتوليد الصوت (التكلفة: 5 محاولات)"):
+        if not audio_text.strip():
+            st.warning("⚠️ يرجى إدخال النص أولاً.")
+        elif st.session_state.get('credit', 0) < 5 and st.session_state.code != "HAYDER_2026":
+            st.error("❌ رصيدك غير كافٍ لإنجاز توليد الصوت.")
+        else:
+            simulate_processing()
+            try:
+                response = client.audio.speech.create(model="tts-1", voice=audio_voice, input=audio_text)
+                with open("temp_output.mp3", "wb") as f:
+                    f.write(response.content)
+                if deduct_attempt(5):
+                    st.success("🟢 تم تحويل المحتوى إلى صوت حقيقي بنجاح!")
+                    st.audio("temp_output.mp3")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"❌ خطأ في معالجة نظام الصوتيات: {e}")
+
+# التذييل السفلي الثابت والأنيق للمنصة
+st.markdown("<br><hr><p style='text-align:center;'>ScholarNode Academy 2026</p>", unsafe_allow_html=True)
