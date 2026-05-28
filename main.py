@@ -11,11 +11,11 @@ import string
 from datetime import datetime, timedelta
 import time
 
-# استدعاء مكتبات معالجة المستندات والـ PDF بأمان لمنع الانهيار
+# استدعاء محرك الصور الفعلي fitz التابع لـ PyMuPDF لمعاينة الأوراق الحقيقية
 try:
-    import pypdf
+    import fitz  # PyMuPDF
 except Exception:
-    pypdf = None
+    fitz = None
 
 try:
     from openai import OpenAI
@@ -100,13 +100,6 @@ st.markdown("""
         padding: 15px;
         border-radius: 10px;
         margin-bottom: 15px;
-    }
-    .pdf-preview-box {
-        border: 1px solid #ccc;
-        padding: 10px;
-        border-radius: 8px;
-        background-color: #f9f9f9;
-        text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -216,37 +209,58 @@ def render_user_services():
         "💬 المستشار الذكي المفتوح"
     ])
     
-    # --- 1. تبويب معاينة ومناقشة المستند (محدث لإظهار الصورة والمعاينة) ---
+    # --- 1. تبويب معاينة ومناقشة المستند (محدث بالكامل لعرض أوراق الـ PDF الفعلية) ---
     with sub_tabs[0]:
         st.subheader("📄 معاينة ومناقشة المستند")
         if uploaded_file:
             st.success(f"✔️ المستند المرفوع حالياً والمستهدف بالعمل: {uploaded_file.name}")
             
-            # 🖼️ قسم المعاينة البصرية للمستند
-            col_preview, col_chat = st.columns([1, 2])
+            col_preview, col_chat = st.columns([1, 1])
             
             with col_preview:
-                st.markdown("**🖼️ معاينة بصرية سريعة للمستند:**", unsafe_allow_html=True)
-                if uploaded_file.name.lower().endswith('.pdf'):
+                st.markdown("### 🖼️ المعاينة البصرية للمستند الحقيقي:")
+                if uploaded_file.name.lower().endswith('.pdf') and fitz:
                     try:
-                        # قراءة عدد صفحات الـ PDF وعرض تفاصيل البنية ليراها الطالب
-                        pdf_reader = pypdf.PdfReader(uploaded_file)
-                        total_pages = len(pdf_reader.pages)
-                        st.info(f"📄 مستند PDF يتكون من: **{total_pages}** صفحات.")
-                        # أيقونة محاكاة للمظهر لتوفير موارد السيرفر وضمان عدم ثقل التحميل للأحجام الكبيرة
-                        st.markdown("""
-                        <div style='border: 2px solid #1e3a8a; padding: 40px 10px; border-radius: 8px; background-color: #f3f4f6; text-align: center;'>
-                            <span style='font-size: 50px;'>📄</span>
-                            <br><b style='color:#1e3a8a;'>تم تنضيد ومعاينة الصفحة الأولى بنجاح</b>
-                            <br><small style='color:#555;'>جاهز للمناقشة والتحليل الفوري</small>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    except Exception:
-                        st.info("🎯 تم تحميل محاذاة ومعاينة هيكل المستند بنجاح.")
+                        # فتح الـ PDF من الذاكرة باستخدام PyMuPDF لقراءة الصور الحية
+                        file_bytes = uploaded_file.read()
+                        doc = fitz.open(stream=file_bytes, filetype="pdf")
+                        total_pages = len(doc)
+                        
+                        # إدارة رقم الصفحة الحالية عبر الـ session_state لمنع إعادة التعيين
+                        if "pdf_page_index" not in st.session_state:
+                            st.session_state.pdf_page_index = 0
+                            
+                        # التأكد من عدم خروج المؤشر عن الحدود عند تغيير الملف
+                        if st.session_state.pdf_page_index >= total_pages:
+                            st.session_state.pdf_page_index = 0
+                            
+                        # استخراج الصفحة المحددة وتحويلها إلى مصفوفة بكسل (صورة)
+                        page = doc[st.session_state.pdf_page_index]
+                        pix = page.get_pixmap(dpi=150) # دقة واضحة وممتازة للقراءة
+                        img_data = pix.tobytes("png")
+                        
+                        # عرض الورقة الحقيقية داخل المنصة
+                        st.image(img_data, caption=f"📄 الورقة الفعلية رقم {st.session_state.pdf_page_index + 1} من إجمالي {total_pages}", use_container_width=True)
+                        
+                        # أزرار التصفح المباشر أسفل الورقة
+                        col_btn1, col_btn2 = st.columns(2)
+                        with col_btn1:
+                            if st.button("⬅️ الصفحة السابقة", use_container_width=True) and st.session_state.pdf_page_index > 0:
+                                st.session_state.pdf_page_index -= 1
+                                st.rerun()
+                        with col_btn2:
+                            if st.button("الصفحة التالية ➡️", use_container_width=True) and st.session_state.pdf_page_index < total_pages - 1:
+                                st.session_state.pdf_page_index += 1
+                                st.rerun()
+                                
+                        # إعادة ضبط المؤشر لكي لا يمنع عمليات التحليل لقراءة الملف من البداية عند الحاجة
+                        uploaded_file.seek(0)
+                    except Exception as e:
+                        st.error(f"⚠️ تعذر استخراج صورة المعاينة الفورية: {str(e)}")
                 elif uploaded_file.name.lower().endswith(('.png', '.jpg', '.jpeg')):
-                    st.image(uploaded_file, caption="📸 صورة المستند المرفوع حالياً", use_container_width=True)
+                    st.image(uploaded_file, caption="📸 صورة المستند المرفوع", use_container_width=True)
                 else:
-                    st.info("📝 تم تحميل هيكل ملف الـ Word وجاري معالجة السطور برمجياً.")
+                    st.info("📝 تم تحميل ملف Word بنجاح، خاصية المعاينة الصورية المباشرة مخصصة لملفات الـ PDF والصور حالياً.")
             
             with col_chat:
                 target_lang_1 = st.selectbox("اللغة المستهدفة للنقاش والتحليل:", ["العربية", "English"], key="tl1")
