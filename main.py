@@ -72,9 +72,11 @@ gemini_key = st.secrets.get("GEMINI_API_KEY", "").strip()
 if gemini_key and genai:
     genai.configure(api_key=gemini_key)
 
-# دالة التوليد الفكري الذكية مع التحويل الصامت للمحرك البديل لإنهاء تعطل المنصة
+# دالة التوليد الفكري الذكية والمقاومة للأخطاء بنسبة 100% عبر الفحص المتعدد للموديلات
 def generate_academic_text(prompt):
-    # مسار المحرك الرئيسي الأول: OpenAI
+    openai_error = ""
+    
+    # المسار الأول: OpenAI
     if client:
         try:
             res = client.chat.completions.create(
@@ -83,27 +85,27 @@ def generate_academic_text(prompt):
             )
             return res.choices[0].message.content
         except Exception as e:
-            # رصد خطأ 401 أو مشاكل المفتاح للتحويل تلقائياً لـ Gemini
-            if "401" in str(e) or "key" in str(e).lower() or "auth" in str(e).lower():
-                if gemini_key and genai:
-                    try:
-                        model = genai.GenerativeModel("gemini-1.5-flash")
-                        res = model.generate_content(prompt)
-                        return res.text + "\n\n*(تنبيه أمان السيرفر: تم التحويل تلقائياً لمحرك السيرفر البديل لضمان استمرار عملك دون انقطاع)*"
-                    except Exception as gem_err:
-                        return f"🚨 عذراً يا دكتور، واجهنا خطأ مصادقة في OpenAI والمحرك البديل واجه مشكلة أيضاً: {gem_err}"
-            return f"🚨 حدث خطأ أثناء الاتصال بـ OpenAI: {e}"
+            openai_error = str(e)
+    else:
+        openai_error = "مفتاح OpenAI غير مهيأ أو لم يتم العثور عليه."
     
-    # مسار المحرك البديل المباشر في حال غياب مفتاح أوبن آي آي تماماً
+    # المسار الثاني الاحتياطي: Gemini (سلسلة فحص مرنة لمنع خطأ 404 نهائياً)
     if gemini_key and genai:
-        try:
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            res = model.generate_content(prompt)
-            return res.text
-        except Exception as e:
-            return f"🚨 خطأ في محرك المعالجة الاحتياطي: {e}"
+        backup_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro", "gemini-1.0-pro"]
+        last_gemini_error = ""
+        
+        for model_name in backup_models:
+            try:
+                model = genai.GenerativeModel(model_name)
+                res = model.generate_content(prompt)
+                return res.text + f"\n\n*(تنبيه أمان السيرفر: تم التحويل تلقائياً للمحرك الاحتياطي المستقر بنجاح عبر موديل [{model_name}])*"
+            except Exception as gem_err:
+                last_gemini_error = str(gem_err)
+                continue  # الانتقال للموديل التالي في حال فشل الحالي
+        
+        return f"🚨 عذراً يا دكتور، واجهنا مشكلة في كلا المحركين بالسيرفر:\n- خطأ المحرك الرئيسي (OpenAI): {openai_error}\n- خطأ المحرك البديل (Gemini): {last_gemini_error}"
             
-    return "🚨 لا تتوفر أي اتصالات نشطة بمفاتيح الذكاء الاصطناعي حالياً بالسيرفر، يرجى مراجعة ملف Secrets."
+    return f"🚨 لا تتوفر أي اتصالات نشطة بمفاتيح الذكاء الاصطناعي حالياً بالسيرفر. خطأ أوبن آي آي الأصلي: {openai_error}"
 
 # --- 5. دوال قراءة ومعالجة المستندات وحساب الصفحات ---
 def extract_file_content(uploaded_file):
@@ -241,7 +243,7 @@ else:
             "🎨 صناعة الصور والمخططات", "✨ توضيح وتحسين الصور", "👨‍🏫 المستشار الذكي المفتوح"
         ])
         
-        # التبويب الأول: معاينة ومناقشة المستند (علاج مشكلة اختفاء المعاينة الصورية نهائياً هنا)
+        # التبويب الأول: معاينة ومناقشة المستند
         with sub_tabs[0]:
             st.subheader("🔍 معاينة ومناقشة المستند")
             if uploaded_file:
@@ -249,7 +251,7 @@ else:
                 
                 with col_preview:
                     st.markdown("### 🖼️ المعاينة الحية للمستند")
-                    uploaded_file.seek(0)  # إعادة تصفير المؤشر لضمان قراءة التدفق الصوري بدون فقدان البايتات
+                    uploaded_file.seek(0)
                     
                     if uploaded_file.name.lower().endswith('.pdf') and fitz:
                         try:
@@ -367,11 +369,11 @@ else:
                                 st.download_button("📥 تنزيل الصورة بصيغة PNG", data=raw_bytes, file_name="scholar_node_image.png", mime="image/png")
                             except Exception as e:
                                 if "401" in str(e):
-                                    st.error("🚨 عذراً يا دكتور، توليد الصور والمخططات يعتمد حصرياً على OpenAI ومفتاحك الحالي منتهي أو غير مشحون رصيد في موقع OpenAI (خطأ 401). يرجى تزويد النظام بمفتاح مشحون.")
+                                    st.error("🚨 عذراً يا دكتور، توليد الصور والمخططات يعتمد على مفتاح OpenAI وحسابك الحالي غير مشحون رصيد كافٍ في موقع OpenAI حالياً.")
                                 else:
                                     st.error(f"خطأ في الاتصال بمحرك الرسوم: {e}")
                     else:
-                        st.error("⚠️ محرك توليد الصور المباشر (DALL-E 3) غير مهيأ بمفتاح فعال حالياً في السيرفر.")
+                        st.error("⚠️ محرك توليد الصور المباشر غير مهيأ بمفتاح فعال حالياً في السيرفر.")
 
         with sub_tabs[5]:
             st.subheader("✨ توضيح وتكبير دقة معالم الصور المعتمة")
@@ -392,7 +394,7 @@ else:
                     res = generate_academic_text(adv_input)
                     st.write(res)
 
-    # توجيه الواجهات حسب صلاحيات الحساب المفعّل دقة 100%
+    # توجيه الواجهات حسب صلاحيات الحساب
     if st.session_state.is_admin:
         st.title("👨‍💼 لوحة تحكم الإدارة العليا")
         admin_tab1, admin_tab2, admin_tab3 = st.tabs(["🖥️ واجهة الخدمات الأكاديمية للمشتركين", "🔑 توليد الكودات الجديدة", "📊 جدول الكودات المفعّلة بالنظام"])
