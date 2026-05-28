@@ -4,3 +4,4 @@ pandas
 PyMuPDF
 python-docx
 pypdf
+google-generativeai
