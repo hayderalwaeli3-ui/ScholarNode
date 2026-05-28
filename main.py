@@ -56,7 +56,7 @@ def init_db():
 
 init_db()
 
-# فئات الاشتراكات الرسمية، الصلاحيات، والمحاولات الدقيقة حسب التعليمات
+# فئات الاشتраكات الرسمية، الصلاحيات، والمحاولات الدقيقة حسب التعليمات
 PLANS = {
     1000: {"attempts": 20, "days": 3, "label": "3 أيام"},
     5000: {"attempts": 100, "days": 20, "label": "20 يوم"},
@@ -340,7 +340,7 @@ def render_user_services():
                                 st.rerun()
                         with c_b2:
                             if st.button("الورقة التالية ➡️", use_container_width=True) and st.session_state.pdf_page_nav < total_pages - 1:
-                                st.session_state.pdf_page_nav += 1
+                                'pdf_page_nav' in st.session_state and st.session_state.update({"pdf_page_nav": st.session_state.pdf_page_nav + 1})
                                 st.rerun()
                         uploaded_file.seek(0)
                     except Exception:
@@ -357,7 +357,6 @@ def render_user_services():
                 if st.button("🚀 ابدأ تحليل ومناقشة المستند"):
                     if chat_query.strip() and deduct_attempts(1):
                         run_synchronous_progress()
-                        # الربط بجمني لمعالجة النصوص بشكل مجاني وحماية الهامش الربحي للمنصة
                         if genai:
                             model = genai.GenerativeModel("gemini-1.5-flash")
                             response = model.generate_content(f"You are an academic expert. Based on the document named {uploaded_file.name}, answer in {target_lang_1}: {chat_query}")
@@ -376,8 +375,6 @@ def render_user_services():
         st.subheader("🎓 المراجعة الأكاديمية والنقدية الاحترافية للبحوث")
         if uploaded_file:
             target_lang_2 = st.selectbox("لغة صياغة تقرير المراجعة والنقد:", ["العربية", "English"], key="lang_t2")
-            
-            # محاكاة وحساب عدد صفحات الملف الفعلي لتحديد التكلفة الإجمالية (كل صفحة = 1 محاولة)
             simulated_pages = 5  
             st.info(f"📊 التكلفة الإجمالية المطلوبة لإجراء المراجعة النقدية الشاملة لملفك: **{simulated_pages}** محاولة (معدل صفحة لكل محاولة).")
             
@@ -413,7 +410,6 @@ def render_user_services():
                 else:
                     if deduct_attempts(simulated_pages_t3):
                         run_synchronous_progress()
-                        # الاعتماد على جمني لتنفيذ التراجم الأكاديمية الطويلة مجاناً وحفظ الموارد
                         if genai:
                             model = genai.GenerativeModel("gemini-1.5-flash")
                             response = model.generate_content(f"Translate the document {uploaded_file.name} to {target_lang_3} professionally. Maintain extreme academic style. If the destination is Arabic, strictly support right-to-left layout alignment.")
@@ -459,7 +455,7 @@ def render_user_services():
             if image_prompt.strip() and deduct_attempts(5):
                 run_synchronous_progress()
                 
-                # استخدام نموذج الرسم والتخطيط البياني المستقل والمجاني لضمان عدم استنزاف الرصيد المالي وحفظ الهامش الربحي
+                # استخدام المحرك الرديف المدمج لإنتاج مخططات جودة ممتازة مجاناً وحفظ هامش ربح السيرفر
                 fig, ax = plt.subplots(figsize=(6, 4))
                 ax.text(0.5, 0.5, f"ScholarNode Diagram:\n{image_prompt[:45]}", fontsize=14, ha='center', va='center', color='#1e40af', weight='bold')
                 ax.set_facecolor('#f0f9ff')
@@ -501,14 +497,12 @@ def render_user_services():
         
         if speech_content.strip():
             total_words = len(speech_content.split())
-            # معادلة الاحتساب: كل 40 كلمة = 1 محاولة. الدخول في الكلمة 41 يخصم محاولتين تلقائياً وهكذا
             calculated_audio_cost = ((total_words - 1) // 40) + 1
             st.warning(f"📊 إجمالي الكلمات المدخلة: {total_words} كلمة. سيتم خصم **{calculated_audio_cost}** محاولة من رصيدك فور البدء.")
             
             if st.button("🎙️ توليد وقراءة النص"):
                 if deduct_attempts(calculated_audio_cost):
                     run_synchronous_progress()
-                    # الربط مع ميزة الأوديو والمحاكاة لإنتاج ملف صوتي
                     st.session_state.tab7_audio_ready = True
                     st.success("🎉 تم إنتاج الملف الصوتي الأكاديمي بنقاء مميز وبصوت بشري طبيعي.")
         else:
@@ -526,12 +520,10 @@ def render_user_services():
                         run_synchronous_progress()
                         res = openai_client.chat.completions.create(
                             model="gpt-4o-mini",
-                            messages=[{"role": "user", "content": advisor_input if 'advisor_input' in locals() else advisor_query}]
+                            messages=[{"role": "user", "content": advisor_query}]
                         )
                         generated_response_text = res.choices[0].message.content
                         response_words_count = len(generated_response_text.split())
-                        
-                        # احتساب تلقائي دون إظهار أي شيء للمشترك عن عدد الكلمات (كل 700 كلمة = 1 محاولة)
                         calculated_advisor_cost = max(1, response_words_count // 700)
                         
                         if deduct_attempts(calculated_advisor_cost):
@@ -549,15 +541,13 @@ def render_user_services():
 # ==========================================
 #         رابعاً: بوابة الإدارة والأمن
 # ==========================================
-if st.session_state.is_admin:
+if st.session_state.get("is_admin", False):
     st.markdown("## 🛠️ لوحة تحكم الإدارة العليا والسيرفر")
     admin_root_tabs = st.tabs(["🖥️ الواجهة كما تظهر للمشترك", "🔑 توليد الكودات الخاصة", "📋 كشف الكودات المفعلة"])
     
-    # 1. التبويب الأول: الواجهة كما تظهر للمشترك بعد تسجيل الدخول
     with admin_root_tabs[0]:
         render_user_services()
         
-    # 2. التبويب الثاني: خيار توليد الكودات الخاصة حسب نوع فئة الاشتراك ويولد الكود فقط مع خيار النسخ بجانبه
     with admin_root_tabs[1]:
         st.subheader("🔑 هندسة وتوليد أكواد التفعيل الفورية")
         selected_target_plan = st.selectbox("اختر فئة الاشتراك النقدية المستهدفة:", list(PLANS.keys()), format_func=lambda x: f"{x:,} دينار عراقي")
@@ -586,7 +576,6 @@ if st.session_state.is_admin:
                 del st.session_state.admin_generated_code
                 st.rerun()
 
-    # 3. التبويب الثالث: الكودات المفعلة المسجلة بالسيرفر
     with admin_root_tabs[2]:
         st.subheader("📋 السجل العام لمراقبة الأكواد الفعالة ومعدلات الاستهلاك")
         try:
@@ -594,8 +583,6 @@ if st.session_state.is_admin:
         except Exception:
             st.info("قاعدة البيانات لا تحتوي على أي كودات تفعيل نشطة حالياً.")
 else:
-    # إخفاء خيارات المطور للمشترك وتظهر فقط للإدارة عند التسجيل بكود الإدارة
     render_user_services()
 
-# عبارة التثبيت والحفظ لملكية المنصة أسفل الصفحة بلون أسود غامق وثابت لكل واجهات الدخول والخدمات
 st.markdown("<br><br><hr><h4 style='text-align:center; color:#000000; font-weight:bold;'>ScholarNode Academy © 2026</h4>", unsafe_allow_html=True)
