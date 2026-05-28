@@ -1,6 +1,7 @@
-streamlit==1.57.0
+streamlit==1.37.0
 openai
 pandas
-PymuPDF
+PyMuPDF
 python-docx
 pypdf
+google-generativeai
